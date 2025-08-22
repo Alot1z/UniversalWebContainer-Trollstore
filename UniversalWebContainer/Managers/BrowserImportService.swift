@@ -154,45 +154,288 @@ class BrowserImportService: ObservableObject {
     }
     
     private func parseChromeBookmarks(at path: String) throws -> [BrowserBookmark] {
-        // Real implementation to parse Chrome Bookmarks file
-        // This would parse the JSON structure of Chrome bookmarks
-        let bookmarks: [BrowserBookmark] = []
+        var bookmarks: [BrowserBookmark] = []
         
-        // Implementation would include:
-        // 1. Read JSON file
-        // 2. Parse bookmark structure
-        // 3. Extract bookmark entries
-        // 4. Handle nested folders
+        // Read JSON file
+        let jsonData = try Data(contentsOf: URL(fileURLWithPath: path))
+        
+        // Parse JSON structure
+        guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+              let roots = json["roots"] as? [String: Any] else {
+            throw BrowserImportError.parsingError("Invalid Chrome bookmarks JSON structure")
+        }
+        
+        // Parse bookmark bar
+        if let bookmarkBar = roots["bookmark_bar"] as? [String: Any] {
+            let bookmarkBarBookmarks = try parseChromeBookmarkFolder(bookmarkBar, folderName: "Bookmark Bar")
+            bookmarks.append(contentsOf: bookmarkBarBookmarks)
+        }
+        
+        // Parse other bookmarks
+        if let otherBookmarks = roots["other"] as? [String: Any] {
+            let otherBookmarksList = try parseChromeBookmarkFolder(otherBookmarks, folderName: "Other Bookmarks")
+            bookmarks.append(contentsOf: otherBookmarksList)
+        }
+        
+        // Parse mobile bookmarks
+        if let mobileBookmarks = roots["synced"] as? [String: Any] {
+            let mobileBookmarksList = try parseChromeBookmarkFolder(mobileBookmarks, folderName: "Mobile Bookmarks")
+            bookmarks.append(contentsOf: mobileBookmarksList)
+        }
         
         return bookmarks
     }
     
-    private func parseFirefoxBookmarks(at path: String) throws -> [BrowserBookmark] {
-        // Real implementation to parse Firefox places.sqlite
-        // This would use SQLite to read the Firefox bookmarks database
-        let bookmarks: [BrowserBookmark] = []
+    private func parseChromeBookmarkFolder(_ folder: [String: Any], folderName: String) throws -> [BrowserBookmark] {
+        var bookmarks: [BrowserBookmark] = []
         
-        // Implementation would include:
-        // 1. Open SQLite database
-        // 2. Query moz_bookmarks table
-        // 3. Join with moz_places table
-        // 4. Extract bookmark data
+        if let children = folder["children"] as? [[String: Any]] {
+            for child in children {
+                if let type = child["type"] as? String {
+                    switch type {
+                    case "url":
+                        if let bookmark = try parseChromeBookmark(child, folderName: folderName) {
+                            bookmarks.append(bookmark)
+                        }
+                    case "folder":
+                        if let childFolderName = child["name"] as? String {
+                            let childBookmarks = try parseChromeBookmarkFolder(child, folderName: childFolderName)
+                            bookmarks.append(contentsOf: childBookmarks)
+                        }
+                    default:
+                        break
+                    }
+                }
+            }
+        }
+        
+        return bookmarks
+    }
+    
+    private func parseChromeBookmark(_ bookmark: [String: Any], folderName: String) throws -> BrowserBookmark? {
+        guard let title = bookmark["name"] as? String,
+              let urlString = bookmark["url"] as? String,
+              let url = URL(string: urlString),
+              let dateAdded = bookmark["date_added"] as? String else {
+            return nil
+        }
+        
+        // Convert Chrome timestamp to Date
+        let timestamp = (dateAdded as NSString).doubleValue / 1000000 // Convert microseconds to seconds
+        let date = Date(timeIntervalSince1970: timestamp)
+        
+        return BrowserBookmark(
+            title: title,
+            url: url,
+            dateAdded: date,
+            source: .chrome,
+            folder: folderName
+        )
+    }
+    
+    private func parseFirefoxBookmarks(at path: String) throws -> [BrowserBookmark] {
+        var bookmarks: [BrowserBookmark] = []
+        
+        // Open SQLite database
+        guard let db = try? SQLiteDatabase(path: path) else {
+            throw BrowserImportError.parsingError("Failed to open Firefox bookmarks database")
+        }
+        
+        // Query Firefox bookmarks
+        let query = """
+            SELECT 
+                b.title,
+                p.url,
+                b.dateAdded,
+                f.title as folder_name
+            FROM moz_bookmarks b
+            JOIN moz_places p ON b.fk = p.id
+            LEFT JOIN moz_bookmarks f ON b.parent = f.id
+            WHERE b.type = 1 AND p.url IS NOT NULL AND p.url != ''
+            ORDER BY b.dateAdded DESC
+        """
+        
+        do {
+            let results = try db.executeQuery(query)
+            
+            for row in results {
+                if let title = row["title"] as? String,
+                   let urlString = row["url"] as? String,
+                   let url = URL(string: urlString),
+                   let dateAdded = row["dateAdded"] as? Int64 {
+                    
+                    let folderName = row["folder_name"] as? String
+                    let date = Date(timeIntervalSince1970: TimeInterval(dateAdded) / 1000000) // Convert microseconds to seconds
+                    
+                    let bookmark = BrowserBookmark(
+                        title: title,
+                        url: url,
+                        dateAdded: date,
+                        source: .firefox,
+                        folder: folderName
+                    )
+                    
+                    bookmarks.append(bookmark)
+                }
+            }
+        } catch {
+            throw BrowserImportError.parsingError("Failed to parse Firefox bookmarks: \(error.localizedDescription)")
+        }
         
         return bookmarks
     }
     
     private func parseSafariCookies(at path: String) throws -> [BrowserCookie] {
-        // Real implementation to parse Safari binary cookies
-        // This would parse the binary format of Safari cookies
-        let cookies: [BrowserCookie] = []
+        var cookies: [BrowserCookie] = []
         
-        // Implementation would include:
-        // 1. Read binary file
-        // 2. Parse cookie structure
-        // 3. Extract cookie data
-        // 4. Handle encryption
+        // Read binary file
+        let cookieData = try Data(contentsOf: URL(fileURLWithPath: path))
+        
+        // Parse Safari binary cookies format
+        var offset = 0
+        
+        // Read header
+        guard cookieData.count >= 4 else {
+            throw BrowserImportError.parsingError("Invalid Safari cookies file")
+        }
+        
+        let signature = cookieData[offset..<offset+4]
+        offset += 4
+        
+        guard signature == Data([0x63, 0x6F, 0x6F, 0x6B]) else { // "cook"
+            throw BrowserImportError.parsingError("Invalid Safari cookies signature")
+        }
+        
+        // Read number of pages
+        guard cookieData.count >= offset + 4 else {
+            throw BrowserImportError.parsingError("Invalid Safari cookies file structure")
+        }
+        
+        let numPages = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        // Parse each page
+        for _ in 0..<numPages {
+            guard offset + 4 <= cookieData.count else { break }
+            
+            let pageSize = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+            offset += 4
+            
+            let pageEnd = offset + Int(pageSize)
+            guard pageEnd <= cookieData.count else { break }
+            
+            let pageData = cookieData[offset..<pageEnd]
+            let pageCookies = try parseSafariCookiePage(pageData)
+            cookies.append(contentsOf: pageCookies)
+            
+            offset = pageEnd
+        }
         
         return cookies
+    }
+    
+    private func parseSafariCookiePage(_ pageData: Data) throws -> [BrowserCookie] {
+        var cookies: [BrowserCookie] = []
+        var offset = 0
+        
+        // Read page header
+        guard pageData.count >= 8 else { return cookies }
+        
+        let pageSignature = pageData[offset..<offset+4]
+        offset += 4
+        
+        guard pageSignature == Data([0x00, 0x00, 0x01, 0x00]) else {
+            return cookies // Skip invalid pages
+        }
+        
+        let numCookies = pageData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        // Parse each cookie
+        for _ in 0..<numCookies {
+            guard offset + 8 <= pageData.count else { break }
+            
+            let cookieOffset = pageData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+            offset += 4
+            
+            let cookieSize = pageData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+            offset += 4
+            
+            let cookieEnd = Int(cookieOffset) + Int(cookieSize)
+            guard cookieEnd <= pageData.count else { break }
+            
+            let cookieData = pageData[Int(cookieOffset)..<cookieEnd]
+            
+            if let cookie = try? parseSafariCookie(cookieData) {
+                cookies.append(cookie)
+            }
+        }
+        
+        return cookies
+    }
+    
+    private func parseSafariCookie(_ cookieData: Data) throws -> BrowserCookie {
+        var offset = 0
+        
+        // Read cookie structure
+        guard cookieData.count >= 20 else {
+            throw BrowserImportError.parsingError("Invalid cookie data")
+        }
+        
+        let flags = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        let urlOffset = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        let nameOffset = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        let pathOffset = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        let valueOffset = cookieData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        offset += 4
+        
+        // Read strings
+        let url = try readSafariString(from: cookieData, at: Int(urlOffset))
+        let name = try readSafariString(from: cookieData, at: Int(nameOffset))
+        let path = try readSafariString(from: cookieData, at: Int(pathOffset))
+        let value = try readSafariString(from: cookieData, at: Int(valueOffset))
+        
+        // Parse flags
+        let isSecure = (flags & 0x01) != 0
+        let isHttpOnly = (flags & 0x02) != 0
+        
+        // Extract domain from URL
+        let domain = URL(string: url)?.host ?? ""
+        
+        return BrowserCookie(
+            name: name,
+            value: value,
+            domain: domain,
+            path: path,
+            expires: nil, // Safari binary cookies don't store expiration
+            isSecure: isSecure,
+            isHttpOnly: isHttpOnly,
+            source: .safari
+        )
+    }
+    
+    private func readSafariString(from data: Data, at offset: Int) throws -> String {
+        guard offset + 4 <= data.count else {
+            throw BrowserImportError.parsingError("Invalid string offset")
+        }
+        
+        let length = data.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self).bigEndian }
+        let stringOffset = offset + 4
+        
+        guard stringOffset + Int(length) <= data.count else {
+            throw BrowserImportError.parsingError("Invalid string length")
+        }
+        
+        let stringData = data[stringOffset..<stringOffset + Int(length)]
+        return String(data: stringData, encoding: .utf8) ?? ""
     }
     
     // MARK: - Utility Methods
@@ -230,6 +473,89 @@ class BrowserImportService: ObservableObject {
                     originalBookmark: bookmark
                 )
             )
+        }
+    }
+}
+
+// MARK: - SQLite Database Helper
+
+class SQLiteDatabase {
+    private var db: OpaquePointer?
+    
+    init(path: String) throws {
+        let result = sqlite3_open(path, &db)
+        if result != SQLITE_OK {
+            throw SQLiteError.openFailed(result)
+        }
+    }
+    
+    deinit {
+        sqlite3_close(db)
+    }
+    
+    func executeQuery(_ query: String) throws -> [[String: Any]] {
+        var statement: OpaquePointer?
+        let result = sqlite3_prepare_v2(db, query, -1, &statement, nil)
+        
+        if result != SQLITE_OK {
+            throw SQLiteError.prepareFailed(result)
+        }
+        
+        defer {
+            sqlite3_finalize(statement)
+        }
+        
+        var rows: [[String: Any]] = []
+        
+        while sqlite3_step(statement) == SQLITE_ROW {
+            var row: [String: Any] = [:]
+            let columnCount = sqlite3_column_count(statement)
+            
+            for i in 0..<columnCount {
+                let columnName = String(cString: sqlite3_column_name(statement, i))
+                let columnType = sqlite3_column_type(statement, i)
+                
+                switch columnType {
+                case SQLITE_INTEGER:
+                    row[columnName] = sqlite3_column_int64(statement, i)
+                case SQLITE_FLOAT:
+                    row[columnName] = sqlite3_column_double(statement, i)
+                case SQLITE_TEXT:
+                    if let text = sqlite3_column_text(statement, i) {
+                        row[columnName] = String(cString: text)
+                    }
+                case SQLITE_BLOB:
+                    if let blob = sqlite3_column_blob(statement, i) {
+                        let size = sqlite3_column_bytes(statement, i)
+                        row[columnName] = Data(bytes: blob, count: Int(size))
+                    }
+                case SQLITE_NULL:
+                    row[columnName] = nil
+                default:
+                    break
+                }
+            }
+            
+            rows.append(row)
+        }
+        
+        return rows
+    }
+}
+
+enum SQLiteError: LocalizedError {
+    case openFailed(Int32)
+    case prepareFailed(Int32)
+    case executeFailed(Int32)
+    
+    var errorDescription: String? {
+        switch self {
+        case .openFailed(let code):
+            return "Failed to open SQLite database: \(code)"
+        case .prepareFailed(let code):
+            return "Failed to prepare SQLite statement: \(code)"
+        case .executeFailed(let code):
+            return "Failed to execute SQLite statement: \(code)"
         }
     }
 }

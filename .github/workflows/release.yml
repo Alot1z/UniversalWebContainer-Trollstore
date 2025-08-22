@@ -1,4 +1,4 @@
-name: Release Universal WebContainer
+name: Create Release
 
 on:
   release:
@@ -8,8 +8,7 @@ on:
       release_version:
         description: 'Release version'
         required: true
-        default: 'v1.0.0'
-        type: string
+        default: '1.0.0'
 
 jobs:
   create-release:
@@ -21,7 +20,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '15.2'
+          xcode-version: '15.0'
 
       - name: Install ldid
         run: |
@@ -50,30 +49,30 @@ jobs:
             build/UniversalWebContainer.ipa
           body: |
             ## 🚀 Universal WebContainer Release
-            
+
             ### 📱 Features
             - ✅ Universal IPA for all iOS versions (15.0-17.0)
             - ✅ TrollStore compatibility
             - ✅ Smart environment detection
             - ✅ Advanced session management
             - ✅ Offline support
-            
+
             ### 🔧 Installation
             1. Download the IPA file
             2. Install via AltStore, Sideloadly, or TrollStore
             3. Trust developer certificate in Settings
-            
+
             ### 🎯 Compatibility
             - **iOS 15.0-17.0**: Full support
             - **Standard iOS**: Basic features
             - **TrollStore**: Advanced features
             - **Jailbreak**: Enhanced capabilities
-            
+
             ### 📊 Build Info
             - **Build Date**: ${{ github.event.release.published_at }}
             - **Commit**: ${{ github.sha }}
             - **Version**: ${{ github.event.inputs.release_version || github.event.release.tag_name }}
-            
+
             ### 🔒 Security
             - Hardware fingerprinting
             - IP-based authorization
