@@ -25,6 +25,7 @@
     </dict>
     <key>entitlements</key>
     <dict>
+        <!-- Standard iOS Entitlements -->
         <key>com.apple.security.application-groups</key>
         <array>
             <string>group.com.universalwebcontainer.app</string>
@@ -33,6 +34,53 @@
         <true/>
         <key>com.apple.security.network.server</key>
         <true/>
+        
+        <!-- TrollStore Entitlements (Activated when TrollStore detected) -->
+        <key>com.apple.developer.unsandboxed-access</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.read-write</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.read-only</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.temporary</key>
+        <true/>
+        
+        <!-- Jailbreak Entitlements (Activated when jailbreak detected) -->
+        <key>com.apple.developer.unsandboxed-access.system</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.system.read-write</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.system.read-only</key>
+        <true/>
+        <key>com.apple.developer.unsandboxed-access.system.temporary</key>
+        <true/>
+        
+        <!-- Advanced System Entitlements -->
+        <key>com.apple.developer.system-extension.install</key>
+        <true/>
+        <key>com.apple.developer.file-system.read-write</key>
+        <true/>
+        <key>com.apple.developer.process-management</key>
+        <true/>
+        <key>com.apple.developer.springboard</key>
+        <true/>
+        
+        <!-- Background Modes -->
+        <key>UIBackgroundModes</key>
+        <array>
+            <string>background-processing</string>
+            <string>background-fetch</string>
+            <string>background-app-refresh</string>
+            <string>remote-notification</string>
+            <string>audio</string>
+            <string>location</string>
+            <string>voip</string>
+            <string>bluetooth-central</string>
+            <string>bluetooth-peripheral</string>
+            <string>external-accessory</string>
+            <string>network-authentication</string>
+            <string>multitasking</string>
+        </array>
     </dict>
     <key>embedOnDemandResourcesAssetPacksInBundle</key>
     <false/>

@@ -7,6 +7,8 @@ struct BrowserImportView: View {
     @EnvironmentObject var sessionManager: SessionManager
     @EnvironmentObject var capabilityService: CapabilityService
     
+    @StateObject private var browserImportService = BrowserImportService.shared
+    
     @State private var selectedBrowsers: Set<BrowserType> = []
     @State private var importOptions: ImportOptions = ImportOptions()
     @State private var isScanning = false
@@ -22,18 +24,12 @@ struct BrowserImportView: View {
         case safari = "safari"
         case chrome = "chrome"
         case firefox = "firefox"
-        case edge = "edge"
-        case brave = "brave"
-        case opera = "opera"
         
         var displayName: String {
             switch self {
             case .safari: return "Safari"
             case .chrome: return "Chrome"
             case .firefox: return "Firefox"
-            case .edge: return "Edge"
-            case .brave: return "Brave"
-            case .opera: return "Opera"
             }
         }
         
@@ -42,41 +38,21 @@ struct BrowserImportView: View {
             case .safari: return "safari"
             case .chrome: return "globe"
             case .firefox: return "flame"
-            case .edge: return "e"
-            case .brave: return "shield"
-            case .opera: return "o"
             }
         }
         
-        var bundleId: String {
+        var browserType: BrowserImportService.BrowserBookmark.BrowserType {
             switch self {
-            case .safari: return "com.apple.mobilesafari"
-            case .chrome: return "com.google.chrome.ios"
-            case .firefox: return "org.mozilla.ios.Firefox"
-            case .edge: return "com.microsoft.msedge"
-            case .brave: return "com.brave.ios.browser"
-            case .opera: return "com.opera.browser"
-            }
-        }
-        
-        var containerPath: String {
-            switch self {
-            case .safari: return "/var/mobile/Containers/Data/Application/*/Library/Safari"
-            case .chrome: return "/var/mobile/Containers/Data/Application/*/Library/Application Support/Google/Chrome"
-            case .firefox: return "/var/mobile/Containers/Data/Application/*/Library/Application Support/Firefox"
-            case .edge: return "/var/mobile/Containers/Data/Application/*/Library/Application Support/Microsoft Edge"
-            case .brave: return "/var/mobile/Containers/Data/Application/*/Library/Application Support/Brave"
-            case .opera: return "/var/mobile/Containers/Data/Application/*/Library/Application Support/Opera"
+            case .safari: return .safari
+            case .chrome: return .chrome
+            case .firefox: return .firefox
             }
         }
     }
     
     struct ImportOptions {
         var importBookmarks = true
-        var importHistory = false
         var importCookies = true
-        var importPasswords = false
-        var importSettings = false
         var createWebApps = true
         var mergeWithExisting = true
     }
@@ -88,46 +64,12 @@ struct BrowserImportView: View {
     }
     
     struct BrowserData {
-        let bookmarks: [Bookmark]
-        let cookies: [Cookie]
-        let history: [HistoryItem]
-        let passwords: [Password]
-        let settings: [String: Any]
+        let bookmarks: [BrowserImportService.BrowserBookmark]
+        let cookies: [BrowserImportService.BrowserCookie]
         
         var totalItems: Int {
-            return bookmarks.count + cookies.count + history.count + passwords.count + settings.count
+            return bookmarks.count + cookies.count
         }
-    }
-    
-    struct Bookmark {
-        let title: String
-        let url: URL
-        let folder: String?
-        let dateAdded: Date
-    }
-    
-    struct Cookie {
-        let name: String
-        let value: String
-        let domain: String
-        let path: String
-        let expires: Date?
-        let isSecure: Bool
-        let isHttpOnly: Bool
-    }
-    
-    struct HistoryItem {
-        let title: String
-        let url: URL
-        let visitDate: Date
-        let visitCount: Int
-    }
-    
-    struct Password {
-        let url: URL
-        let username: String
-        let password: String
-        let dateCreated: Date
     }
     
     struct BrowserImportResults {
@@ -165,11 +107,7 @@ struct BrowserImportView: View {
                 // Import Options Section
                 Section("Import Options") {
                     Toggle("Import Bookmarks", isOn: $importOptions.importBookmarks)
-                    Toggle("Import History", isOn: $importOptions.importHistory)
                     Toggle("Import Cookies", isOn: $importOptions.importCookies)
-                    Toggle("Import Passwords", isOn: $importOptions.importPasswords)
-                        .disabled(!capabilityService.canUseFeature(.enhancedPersistence))
-                    Toggle("Import Settings", isOn: $importOptions.importSettings)
                     
                     Divider()
                     
@@ -260,9 +198,7 @@ struct BrowserImportView: View {
     
     // MARK: - Computed Properties
     private func isBrowserAvailable(_ browser: BrowserType) -> Bool {
-        // Check if browser is installed
-        let bundleId = browser.bundleId
-        return capabilityService.canUseFeature(.browserImport)
+        return browserImportService.isBrowserAccessible(browser.browserType)
     }
     
     // MARK: - Methods
@@ -346,31 +282,35 @@ struct BrowserImportView: View {
     }
     
     private func scanBrowserData(_ browser: BrowserType) async throws -> BrowserData {
-        // This would implement actual browser data scanning
-        // For now, return mock data
+        var bookmarks: [BrowserImportService.BrowserBookmark] = []
+        var cookies: [BrowserImportService.BrowserCookie] = []
         
-        let bookmarks = [
-            Bookmark(title: "Google", url: URL(string: "https://google.com")!, folder: nil, dateAdded: Date()),
-            Bookmark(title: "GitHub", url: URL(string: "https://github.com")!, folder: "Development", dateAdded: Date())
-        ]
+        // Import bookmarks
+        do {
+            switch browser {
+            case .safari:
+                bookmarks = try await browserImportService.importSafariBookmarks()
+            case .chrome:
+                bookmarks = try await browserImportService.importChromeBookmarks()
+            case .firefox:
+                bookmarks = try await browserImportService.importFirefoxBookmarks()
+            }
+        } catch {
+            print("Failed to import bookmarks from \(browser.displayName): \(error)")
+        }
         
-        let cookies = [
-            Cookie(name: "session", value: "abc123", domain: ".example.com", path: "/", expires: Date().addingTimeInterval(86400), isSecure: true, isHttpOnly: false)
-        ]
-        
-        let history = [
-            HistoryItem(title: "Recent Visit", url: URL(string: "https://example.com")!, visitDate: Date(), visitCount: 1)
-        ]
-        
-        let passwords: [Password] = []
-        let settings: [String: Any] = [:]
+        // Import cookies (Safari only for now)
+        if browser == .safari {
+            do {
+                cookies = try await browserImportService.importSafariCookies()
+            } catch {
+                print("Failed to import cookies from \(browser.displayName): \(error)")
+            }
+        }
         
         return BrowserData(
             bookmarks: bookmarks,
-            cookies: cookies,
-            history: history,
-            passwords: passwords,
-            settings: settings
+            cookies: cookies
         )
     }
     
