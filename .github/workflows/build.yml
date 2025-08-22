@@ -5,112 +5,116 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'universal'
+        type: choice
+        options:
+        - universal
+        - trollstore
+        - standard
 
 jobs:
-  build:
-    runs-on: macos-latest
-
+  detect-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      build-type: ${{ steps.detect.outputs.build-type }}
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0  # Fetch all history for resources
+      - uses: actions/checkout@v4
+      - name: Detect Build Type
+        id: detect
+        run: |
+          if [ "${{ github.event.inputs.build_type }}" != "" ]; then
+            echo "build-type=${{ github.event.inputs.build_type }}" >> $GITHUB_OUTPUT
+          else
+            echo "build-type=universal" >> $GITHUB_OUTPUT
+          fi
 
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '15.0'
-
-    - name: Verify Resources
-      run: |
-        echo "🔍 Verifying local resources..."
-        
-        # Check if resources exist
-        if [ ! -d "UniversalWebContainer/Resources" ]; then
-          echo "❌ Resources directory not found!"
-          exit 1
-        fi
-        
-        # Check resource manifest
-        if [ -f "UniversalWebContainer/Resources/manifest.json" ]; then
-          echo "✅ Resource manifest found"
-          cat UniversalWebContainer/Resources/manifest.json
-        else
-          echo "⚠️ Resource manifest not found"
-        fi
-        
-        # List available resources
-        echo "📁 Available resources:"
-        ls -la UniversalWebContainer/Resources/
-        echo ""
-        echo "📦 Nathan jailbreak resources:"
-        ls -la UniversalWebContainer/Resources/bins/nathanlr/ 2>/dev/null || echo "Not found"
-        echo ""
-        echo "🔓 roothide Bootstrap resources:"
-        ls -la UniversalWebContainer/Resources/bins/roothide/ 2>/dev/null || echo "Not found"
-        echo ""
-        echo "⚡ TrollStore resources:"
-        ls -la UniversalWebContainer/Resources/bins/trollstore/ 2>/dev/null || echo "Not found"
-
-    - name: Setup Build Environment
-      run: |
-        echo "🔧 Setting up build environment..."
-        
-        # Set up Theos environment
-        export THEOS=./UniversalWebContainer/Resources/macbins/theos
-        export ROOTHIDE_THEOS=./UniversalWebContainer/Resources/macbins/roothide-theos
-        
-        # Make build scripts executable
-        chmod +x UniversalWebContainer/Resources/scripts/*.sh
-        
-        # Set up environment variables
-        echo "THEOS=$THEOS" >> $GITHUB_ENV
-        echo "ROOTHIDE_THEOS=$ROOTHIDE_THEOS" >> $GITHUB_ENV
-        
-        echo "✅ Build environment configured"
-
-    - name: Build Universal IPA
-      run: |
-        echo "🔨 Building Universal WebContainer IPA..."
-        
-        # Use local build script
-        cd UniversalWebContainer/Resources/scripts
-        ./build.sh
-        
-        echo "✅ Universal IPA built successfully!"
-        echo "📱 IPA will automatically detect environment:"
-        echo "   • Standard: Normal sideloading"
-        echo "   • TrollStore: Enhanced capabilities"
-        echo "   • Jailbreak: Full features (roothide/Nathan)"
-
-    - name: Package IPA
-      run: |
-        echo "📦 Packaging Universal WebContainer..."
-        
-        # Use local package script
-        cd UniversalWebContainer/Resources/scripts
-        ./package.sh
-        
-        echo "✅ IPA packaged successfully!"
-
-    - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: UniversalWebContainer-IPA
-        path: |
-          UniversalWebContainer/Resources/scripts/build/*.ipa
-          UniversalWebContainer/Resources/manifest.json
-        retention-days: 30
-
-    - name: Build Status
-      run: |
-        echo "🎯 Build completed successfully!"
-        echo "📦 Universal IPA created with smart environment detection"
-        echo "🔧 Features will be automatically enabled based on installation method"
-        echo "📁 All resources included locally - no external downloads needed"
-        
-        # Show resource statistics
-        if [ -f "UniversalWebContainer/Resources/manifest.json" ]; then
-          echo ""
-          echo "📊 Resource Statistics:"
-          cat UniversalWebContainer/Resources/manifest.json | jq -r '.resources | to_entries[] | "  \(.key): \(.value.files // .value.bins // 0) files"'
-        fi
+  build-universal:
+    needs: detect-environment
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        xcode: ['15.2']
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ matrix.xcode }}
+      
+      - name: Cache Xcode
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-${{ matrix.xcode }}-${{ hashFiles('**/*.xcodeproj') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-${{ matrix.xcode }}-
+      
+      - name: Build Universal IPA
+        run: |
+          echo "🚀 Building Universal WebContainer IPA..."
+          echo "📱 Build Type: ${{ needs.detect-environment.outputs.build-type }}"
+          
+          # Build archive
+          xcodebuild -project UniversalWebContainer.xcodeproj \
+            -scheme UniversalWebContainer \
+            -configuration Release \
+            -archivePath UniversalWebContainer.xcarchive \
+            archive
+          
+          # Export with universal options
+          xcodebuild -exportArchive \
+            -archivePath UniversalWebContainer.xcarchive \
+            -exportPath ./builds \
+            -exportOptionsPlist exportOptions-universal.plist
+          
+          echo "✅ Build completed successfully!"
+      
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniversalWebContainer-${{ needs.detect-environment.outputs.build-type }}-${{ github.run_number }}
+          path: ./builds/*.ipa
+          retention-days: 30
+      
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./builds/*.ipa
+          tag_name: v${{ github.run_number }}
+          name: Universal WebContainer v${{ github.run_number }}
+          body: |
+            🚀 Universal WebContainer v${{ github.run_number }}
+            
+            ## 🔧 Build Type: ${{ needs.detect-environment.outputs.build-type }}
+            
+            ### 📱 Features:
+            - ✅ Universal IPA (Works on all devices)
+            - ✅ Automatic environment detection
+            - ✅ TrollStore compatibility
+            - ✅ Jailbreak detection (roothide/Nathan)
+            - ✅ Smart feature activation
+            
+            ### 🎯 Installation:
+            1. Download the IPA file
+            2. Install via your preferred method:
+               - **Standard**: AltStore, Sideloadly, 3uTools
+               - **TrollStore**: Direct installation
+               - **Jailbreak**: Direct installation
+            
+            ### 🔍 Environment Detection:
+            The app automatically detects your environment and activates appropriate features:
+            - **Standard iOS**: Basic features
+            - **TrollStore**: Advanced features + browser import
+            - **Jailbreak**: All features + system integration
+            
+            ---
+            *Built with ❤️ using GitHub Actions*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

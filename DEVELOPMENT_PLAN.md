@@ -49,6 +49,7 @@ The same IPA can be distributed and installed in different ways, automatically d
 - [x] **NotificationManager**: Push notifications, local notifications, badge management
 - [x] **OfflineManager**: Offline caching, PWA support, network monitoring
 - [x] **SyncManager**: iCloud sync, custom server sync, conflict resolution
+- [x] **KeychainManager**: Secure storage for tokens, cookies, and sensitive data
 
 ### UI Components
 - [x] **ContentView**: Main launcher interface with tabs and search

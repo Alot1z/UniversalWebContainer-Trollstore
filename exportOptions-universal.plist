@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>development</string>
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <false/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>embedOnDemandResourcesAssetPacksInBundle</key>
+    <false/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+    <key>distributionBundleIdentifier</key>
+    <string>com.universalwebcontainer.app</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.universalwebcontainer.app</key>
+        <string>UniversalWebContainer_Universal</string>
+    </dict>
+    <key>entitlements</key>
+    <dict>
+        <!-- Standard entitlements -->
+        <key>com.apple.developer.team-identifier</key>
+        <string>YOUR_TEAM_ID</string>
+        
+        <!-- TrollStore entitlements -->
+        <key>com.apple.private.security.no-sandbox</key>
+        <true/>
+        <key>platform-application</key>
+        <true/>
+        <key>com.apple.private.persona-mgmt</key>
+        <true/>
+        <key>com.apple.springboard.launchapplications</key>
+        <true/>
+        
+        <!-- Jailbreak entitlements -->
+        <key>com.apple.private.tcc.allow</key>
+        <array>
+            <string>kTCCServiceSystemPolicyAllFiles</string>
+            <string>kTCCServiceSystemPolicySysAdminFiles</string>
+        </array>
+        <key>com.apple.private.security.container-required</key>
+        <false/>
+        <key>com.apple.security.cs.allow-jit</key>
+        <true/>
+        <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+        <true/>
+        <key>com.apple.security.cs.disable-library-validation</key>
+        <true/>
+        <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

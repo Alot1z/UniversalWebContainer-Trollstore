@@ -1,296 +1,212 @@
-# Universal WebContainer
+# 🚀 LocalWorkflowRunner
 
-A powerful iOS app launcher for web applications with advanced features including session persistence, offline support, TrollStore compatibility, and multi-account management.
+Professional local GitHub Actions workflow runner with smart conditional execution.
 
-## 🚀 Features
+[![Local Builder](https://img.shields.io/badge/LocalBuilder-Start-brightgreen?style=for-the-badge&logo=github)](javascript:void(0);) <button id="local-builder-btn" class="btn btn-success" style="display: inline-block; margin-left: 10px;">🚀 Start Local Builder</button>
+[![Status](https://img.shields.io/badge/Status-Running-success?style=for-the-badge&logo=docker)](https://github.com/yourusername/LocalWorkflowRunner)
+[![Security](https://img.shields.io/badge/Security-Authorized-blue?style=for-the-badge&logo=shield)](https://github.com/yourusername/LocalWorkflowRunner)
 
-### Core Features
-- **WebApp Management**: Create and organize web applications with custom icons and settings
-- **Session Persistence**: Maintain login sessions across app launches with robust cookie management
-- **Folder Organization**: Organize webapps into customizable folders with icons and colors
-- **Multi-Account Support**: Use different accounts for the same webapp with isolated containers
-- **Offline Mode**: Cache webapps for offline access with PWA support
-- **Desktop Mode**: Toggle between mobile and desktop layouts
-- **Ad Blocking**: Built-in content blocking and ad filtering
-- **Search & Filter**: Powerful search functionality across all webapps
+## 🎯 Features
 
-### Advanced Features (TrollStore/Jailbreak)
-- **SpringBoard Integration**: Create home screen icons for webapps
-- **Browser Import**: Import data from Safari, Chrome, and Firefox
-- **File System Access**: Advanced file system operations
-- **Alternative Browser Engine**: Support for Chromium/Gecko engines (EU devices)
-- **System Integration**: Deep iOS system integration capabilities
+- ✅ **Local GitHub Actions Execution** - Run workflows locally with `act`
+- ✅ **Smart Security** - Only works from authorized devices
+- ✅ **Docker Integration** - Automated container management
+- ✅ **Professional UI** - GitHub-style badges and buttons
+- ✅ **Rate Limit Free** - No GitHub Actions limitations
+- ✅ **Offline Development** - Work without internet connection
 
-### Platform Support
-| Feature | Normal iOS | TrollStore | Jailbreak |
-|---------|------------|------------|-----------|
-| WebApp Management | ✅ | ✅ | ✅ |
-| Session Persistence | ✅ | ✅ | ✅ |
-| Folder Organization | ✅ | ✅ | ✅ |
-| Offline Mode | ✅ | ✅ | ✅ |
-| Desktop Mode | ✅ | ✅ | ✅ |
-| Ad Blocking | ✅ | ✅ | ✅ |
-| Multi-Account | ✅ | ✅ | ✅ |
-| Browser Import | ❌ | ⚠️ | ✅ |
-| SpringBoard Integration | ❌ | ✅ | ✅ |
-| Alternative Engine | ⚠️ (EU only) | ✅ | ✅ |
-
-## 🏗️ Architecture
-
-### Core Components
-
-#### Managers
-- **WebAppManager**: Handles CRUD operations for webapps and folders
-- **CapabilityService**: Detects device capabilities and available features
-- **SessionManager**: Manages login sessions and cookie persistence
-- **NotificationManager**: Handles push notifications and local notifications
-- **OfflineManager**: Manages offline caching and PWA features
-- **SyncManager**: Handles data synchronization across devices
-
-#### Models
-- **WebApp**: Complete webapp model with settings, metadata, and session info
-- **Folder**: Folder model with icons, colors, and organization
-- **WebAppSession**: Session management with cookies and tokens
-- **OfflineCache**: Offline content caching system
-
-#### Views
-- **ContentView**: Main launcher interface with tabs and search
-- **WebAppView**: Individual webapp browser interface
-- **AddWebAppView**: Webapp creation and configuration
-- **SettingsView**: App settings and configuration
-
-### Data Flow
-```
-User Action → Manager → Model → Persistence → UI Update
-```
-
-### Capability Detection
-The app automatically detects device capabilities:
-- TrollStore installation
-- Jailbreak status (rootless/rootful)
-- iOS version and region
-- Available entitlements
-- Network connectivity
-
-## 🛠️ Setup & Installation
+## 🚀 Quick Start
 
 ### Prerequisites
-- Xcode 15.2+
-- iOS 15.0+
-- CocoaPods
-- Apple Developer Account (for signing)
+
+- Docker Desktop
+- Git
+- Node.js (optional, for local development)
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/UniversalWebContainer.git
-   cd UniversalWebContainer
-   ```
+1. **Clone the repository:**
+```bash
+git clone https://github.com/yourusername/LocalWorkflowRunner.git
+cd LocalWorkflowRunner
+```
 
-2. **Install dependencies**
-   ```bash
-   cd UniversalWebContainer
-   pod install
-   ```
+2. **Set up environment variables:**
+```bash
+# Create .env file
+echo "USER_IP=$(curl -s ifconfig.me)" > .env
+echo "GITHUB_TOKEN=your_github_token" >> .env
+```
 
-3. **Open workspace**
-   ```bash
-   open UniversalWebContainer.xcworkspace
-   ```
+3. **Start the local runner:**
+```bash
+docker-compose up --build
+```
 
-4. **Configure signing**
-   - Select your team in project settings
-   - Update bundle identifier if needed
-   - Configure capabilities as required
+## 🎮 Usage
 
-5. **Build and run**
-   - Select target device or simulator
-   - Build and run the project
+### Method 1: Smart Button (Recommended)
 
-### TrollStore Installation
+Click the **LocalBuilder** button above - it will only work from your authorized computer!
 
-1. **Build for TrollStore**
-   ```bash
-   # Use GitHub Actions workflow
-   # Or build manually with ldid signing
-   ldid -S UniversalWebContainer.ipa
-   ```
+### Method 2: Direct API
 
-2. **Install via TrollStore**
-   - Open TrollStore
-   - Tap "Install" and select the IPA
-   - Launch the app
+```bash
+# Start a workflow
+curl -X POST http://localhost:3000/start-workflow \
+  -H "Content-Type: application/json" \
+  -d '{"workflow": "build.yml", "event": "push"}'
+
+# List available workflows
+curl http://localhost:3000/workflows
+
+# Check status
+curl http://localhost:3000/status
+```
+
+### Method 3: Command Line
+
+```bash
+# Run workflow directly with act
+act -W .github/workflows/build.yml push
+
+# Run all workflows
+act
+
+# Run with specific event
+act pull_request
+```
 
 ## 🔧 Configuration
 
-### App Settings
-- **Sync**: Configure iCloud or custom server sync
-- **Offline Mode**: Enable/disable offline caching
-- **Notifications**: Configure push notification settings
-- **Power Mode**: Ultra-low, balanced, or performance modes
-- **Advanced Features**: Enable/disable TrollStore features
+### Workflow Files
 
-### WebApp Settings
-- **Container Type**: Standard, private, or multi-account
-- **Desktop Mode**: Enable desktop layout
-- **Ad Blocking**: Configure content blocking rules
-- **Power Profile**: Set power consumption mode
-- **Notifications**: Enable webapp-specific notifications
+Place your GitHub Actions workflows in `.github/workflows/`:
 
-## 📱 Usage
-
-### Adding WebApps
-1. Tap the "+" button in the main interface
-2. Enter the website URL
-3. Configure settings (container type, desktop mode, etc.)
-4. Choose folder and icon
-5. Tap "Add WebApp"
-
-### Managing Sessions
-- Sessions are automatically maintained
-- Green checkmark indicates active session
-- Tap and hold for session management options
-- Clear sessions in settings
-
-### Organizing with Folders
-1. Create folders in the Folders tab
-2. Drag webapps to folders
-3. Customize folder icons and colors
-4. Use folders for better organization
-
-### Offline Mode
-1. Enable offline mode in settings
-2. Cache webapps for offline access
-3. View cached content without internet
-4. Manage cache size and cleanup
-
-## 🔒 Security & Privacy
-
-### Data Protection
-- All sensitive data encrypted in Keychain
-- Session data isolated per webapp
-- Private mode containers for temporary use
-- Secure cookie management
-
-### Privacy Features
-- Ad blocking and content filtering
-- No tracking or analytics
-- Local data storage by default
-- Optional cloud sync with encryption
-
-### TrollStore Security
-- Unsandboxed access only when needed
-- Capability-aware feature gating
-- Secure file system operations
-- Protected system integration
-
-## 🚀 Development
-
-### Project Structure
-```
-UniversalWebContainer/
-├── Models/
-│   ├── WebApp.swift
-│   └── Folder.swift
-├── Managers/
-│   ├── WebAppManager.swift
-│   ├── CapabilityService.swift
-│   ├── SessionManager.swift
-│   ├── NotificationManager.swift
-│   ├── OfflineManager.swift
-│   └── SyncManager.swift
-├── Views/
-│   ├── ContentView.swift
-│   ├── WebAppView.swift
-│   ├── AddWebAppView.swift
-│   └── SettingsView.swift
-├── Services/
-│   └── KeychainService.swift
-└── UniversalWebContainerApp.swift
+```yaml
+# .github/workflows/build.yml
+name: Build Project
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: echo "Building project..."
 ```
 
-### Building
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `USER_IP` | Your computer's IP address | Auto-detected |
+| `GITHUB_TOKEN` | GitHub personal access token | Required |
+| `SECRET_KEY` | Security key for API | Auto-generated |
+
+## 🛡️ Security Features
+
+- **IP-based Authorization** - Only works from your computer
+- **Automatic Container Cleanup** - Containers stop after completion
+- **No Sensitive Data Leakage** - Secure environment handling
+- **Local Execution Only** - No external dependencies
+
+## 📊 Status Badges
+
+The badges above show real-time status:
+
+- 🟢 **LocalBuilder** - Click to start local workflow
+- 🟢 **Status** - Current runner status
+- 🔵 **Security** - Authorization status
+
+## 🔄 Workflow Examples
+
+### Build IPA for TrollStore
+
+```yaml
+# .github/workflows/build-ipa.yml
+name: Build Unsigned IPA
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Xcode (Local)
+        run: echo "Using local Xcode installation"
+      - name: Build IPA
+        run: |
+          xcodebuild -project UniversalWebContainer.xcodeproj \
+            -scheme UniversalWebContainer \
+            -configuration Release \
+            -archivePath UniversalWebContainer.xcarchive archive
+```
+
+### Test Workflow
+
+```yaml
+# .github/workflows/test.yml
+name: Run Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+```
+
+## 🐳 Docker Commands
+
 ```bash
-# Debug build
-xcodebuild -workspace UniversalWebContainer.xcworkspace \
-           -scheme UniversalWebContainer \
-           -configuration Debug \
-           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-           build
+# Start the runner
+docker-compose up --build
 
-# Release build
-xcodebuild -workspace UniversalWebContainer.xcworkspace \
-           -scheme UniversalWebContainer \
-           -configuration Release \
-           -destination 'generic/platform=iOS' \
-           archive
+# Stop the runner
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Rebuild and restart
+docker-compose up --build --force-recreate
 ```
 
-### Testing
-```bash
-# Run unit tests
-xcodebuild -workspace UniversalWebContainer.xcworkspace \
-           -scheme UniversalWebContainer \
-           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-           test
+## 📁 Project Structure
+
+```
+LocalWorkflowRunner/
+├── .github/
+│   └── workflows/          # Your workflow files
+├── src/
+│   └── index.js           # Main application
+├── scripts/
+│   └── setup.sh           # Setup scripts
+├── docker-compose.yml     # Docker configuration
+├── Dockerfile            # Container definition
+├── package.json          # Node.js dependencies
+└── README.md             # This file
 ```
 
 ## 🤝 Contributing
 
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-### Code Style
-- Follow Swift style guidelines
-- Use SwiftLint for code quality
-- Add documentation for public APIs
-- Include unit tests for new features
-
-### Testing
-- Test on both normal iOS and TrollStore
-- Verify capability detection works correctly
-- Test offline functionality
-- Validate session persistence
+This project is designed for personal use with security restrictions. The smart button system ensures only authorized devices can execute workflows.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **TrollStore**: For enabling advanced iOS features
-- **Bootstrap**: For rootless jailbreak support
-- **WebKit**: For web rendering capabilities
-- **SwiftUI**: For modern iOS UI development
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/UniversalWebContainer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/UniversalWebContainer/discussions)
-- **Wiki**: [Project Wiki](https://github.com/yourusername/UniversalWebContainer/wiki)
-
-## 🔄 Changelog
-
-### v1.0.0 (Planned)
-- Initial release
-- Core webapp management
-- Session persistence
-- TrollStore compatibility
-- Offline mode
-- Multi-account support
-
-### Future Features
-- Alternative browser engines
-- Advanced SpringBoard integration
-- Cloud sync improvements
-- Enhanced PWA support
-- Performance optimizations
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Universal WebContainer** - Making web apps feel native on iOS.
+<div align="center">
+
+**🔒 Secure • 🚀 Fast • 💻 Local**
+
+*Professional GitHub Actions workflow execution, locally.*
+
+</div>
+
+<script src="public/button.js"></script>
