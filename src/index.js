@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 // Advanced Security Configuration
 const AUTHORIZED_IP = process.env.USER_IP || '127.0.0.1';
 const SECRET_KEY = process.env.SECRET_KEY || crypto.randomBytes(32).toString('hex');
-const ENV_KEY = process.env.ENV_KEY || this.generateSecureEnvKey();
+const ENV_KEY = process.env.ENV_KEY || generateSecureEnvKey();
 
 // Generate a secure environment key that's hard to replicate
 function generateSecureEnvKey() {
