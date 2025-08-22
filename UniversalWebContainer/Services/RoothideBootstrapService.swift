@@ -8,6 +8,8 @@ class RoothideBootstrapService: ObservableObject {
     @Published var jbrand: String?
     @Published var bootstrapStatus: BootstrapStatus = .unknown
     @Published var availableTools: [BootstrapTool] = []
+    @Published var sshStatus: SSHStatus = .unknown
+    @Published var tweakStatus: TweakStatus = .unknown
     
     static let shared = RoothideBootstrapService()
     
@@ -53,6 +55,61 @@ class RoothideBootstrapService: ObservableObject {
         }
     }
     
+    // MARK: - SSH Status
+    enum SSHStatus: String, CaseIterable {
+        case unknown = "unknown"
+        case notInstalled = "not_installed"
+        case installed = "installed"
+        case running = "running"
+        case stopped = "stopped"
+        
+        var displayName: String {
+            switch self {
+            case .unknown: return "Unknown"
+            case .notInstalled: return "Not Installed"
+            case .installed: return "Installed"
+            case .running: return "Running"
+            case .stopped: return "Stopped"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .unknown: return "questionmark.circle"
+            case .notInstalled: return "xmark.circle"
+            case .installed: return "checkmark.circle"
+            case .running: return "play.circle"
+            case .stopped: return "stop.circle"
+            }
+        }
+    }
+    
+    // MARK: - Tweak Status
+    enum TweakStatus: String, CaseIterable {
+        case unknown = "unknown"
+        case disabled = "disabled"
+        case enabled = "enabled"
+        case partiallyEnabled = "partially_enabled"
+        
+        var displayName: String {
+            switch self {
+            case .unknown: return "Unknown"
+            case .disabled: return "Disabled"
+            case .enabled: return "Enabled"
+            case .partiallyEnabled: return "Partially Enabled"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .unknown: return "questionmark.circle"
+            case .disabled: return "xmark.circle"
+            case .enabled: return "checkmark.circle"
+            case .partiallyEnabled: return "minus.circle"
+            }
+        }
+    }
+    
     // MARK: - Bootstrap Tools
     enum BootstrapTool: String, CaseIterable {
         case bootstrapd = "bootstrapd"
@@ -65,6 +122,8 @@ class RoothideBootstrapService: ObservableObject {
         case zstd = "zstd"
         case rebuildapps = "rebuildapps"
         case prepBootstrap = "prep_bootstrap"
+        case openssh = "openssh"
+        case sshd = "sshd"
         
         var displayName: String {
             switch self {
@@ -78,6 +137,8 @@ class RoothideBootstrapService: ObservableObject {
             case .zstd: return "Zstandard Compressor"
             case .rebuildapps: return "Rebuild Apps Script"
             case .prepBootstrap: return "Bootstrap Preparation"
+            case .openssh: return "OpenSSH"
+            case .sshd: return "SSH Daemon"
             }
         }
         
@@ -93,6 +154,8 @@ class RoothideBootstrapService: ObservableObject {
             case .zstd: return "Decompress bootstrap archives"
             case .rebuildapps: return "Rebuild application signatures"
             case .prepBootstrap: return "Prepare bootstrap environment"
+            case .openssh: return "Secure shell access"
+            case .sshd: return "SSH server daemon"
             }
         }
         
@@ -108,6 +171,8 @@ class RoothideBootstrapService: ObservableObject {
             case .zstd: return "archivebox.fill"
             case .rebuildapps: return "hammer"
             case .prepBootstrap: return "wrench.and.screwdriver"
+            case .openssh: return "terminal"
+            case .sshd: return "server.rack"
             }
         }
         
@@ -129,6 +194,8 @@ class RoothideBootstrapService: ObservableObject {
             let brand = await getJbrand()
             let status = await getBootstrapStatus()
             let tools = await getAvailableTools()
+            let ssh = await getSSHStatus()
+            let tweaks = await getTweakStatus()
             
             await MainActor.run {
                 self.isBootstrapInstalled = installed
@@ -136,6 +203,8 @@ class RoothideBootstrapService: ObservableObject {
                 self.jbrand = brand
                 self.bootstrapStatus = status
                 self.availableTools = tools
+                self.sshStatus = ssh
+                self.tweakStatus = tweaks
                 
                 print("🔍 roothide Bootstrap detection:")
                 print("   Installed: \(installed)")
@@ -143,6 +212,8 @@ class RoothideBootstrapService: ObservableObject {
                 print("   jbrand: \(brand ?? "Unknown")")
                 print("   Status: \(status.displayName)")
                 print("   Tools: \(tools.count)")
+                print("   SSH: \(ssh.displayName)")
+                print("   Tweaks: \(tweaks.displayName)")
             }
         }
     }
@@ -299,6 +370,52 @@ class RoothideBootstrapService: ObservableObject {
         return fileManager.fileExists(atPath: toolPath)
     }
     
+    // MARK: - SSH Status Detection
+    private func getSSHStatus() async -> SSHStatus {
+        // Check if OpenSSH package is installed
+        if !await isOpenSSHInstalled() {
+            return .notInstalled
+        }
+        
+        // Check if SSH daemon is running
+        if await isProcessRunning("sshd") {
+            return .running
+        }
+        
+        return .stopped
+    }
+    
+    private func isOpenSSHInstalled() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let opensshPaths = [
+            "\(jbroot)/usr/bin/ssh",
+            "\(jbroot)/usr/bin/sshd",
+            "\(jbroot)/usr/sbin/sshd"
+        ]
+        
+        for path in opensshPaths {
+            if fileManager.fileExists(atPath: path) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    // MARK: - Tweak Status Detection
+    private func getTweakStatus() async -> TweakStatus {
+        guard let jbroot = jbrootPath else { return .unknown }
+        
+        let tweakFlagPath = "\(jbroot)/var/mobile/.tweakenabled"
+        
+        if fileManager.fileExists(atPath: tweakFlagPath) {
+            return .enabled
+        }
+        
+        return .disabled
+    }
+    
     // MARK: - Bootstrap Operations
     func startBootstrapd() async -> Bool {
         guard let jbroot = jbrootPath else { return false }
@@ -373,6 +490,258 @@ class RoothideBootstrapService: ObservableObject {
         }
     }
     
+    // MARK: - NEW: System Maintenance Functions (BASERET PÅ DEEPWIKI)
+    func respringAction() async -> Bool {
+        return await respring()
+    }
+    
+    func rebuildappsAction() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/basebin/rebuildapps.sh"
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func rebuildIconCacheAction() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/uicache"
+        task.arguments = ["-a"]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func reinstallPackageManager() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        // Install Sileo
+        let sileoResult = await installPackage("\(jbroot)/var/stash/_.YQn8vY/Applications/Sileo.app/sileo.deb")
+        
+        // Install Zebra
+        let zebraResult = await installPackage("\(jbroot)/var/stash/_.YQn8vY/Applications/Zebra.app/zebra.deb")
+        
+        // Update UI cache
+        let uicacheResult = await rebuildUICache()
+        
+        return sileoResult && zebraResult && uicacheResult
+    }
+    
+    func resetMobilePassword() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/passwd"
+        task.arguments = ["mobile"]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    // MARK: - NEW: Advanced Tweak Management (BASERET PÅ DEEPWIKI)
+    func URLSchemesAction(_ enable: Bool) async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let urlSchemeFlagPath = "\(jbroot)/var/mobile/.allow_url_schemes"
+        
+        if enable {
+            // Create URL scheme flag
+            do {
+                try "1".write(toFile: urlSchemeFlagPath, atomically: true, encoding: .utf8)
+                // Rebuild apps after enabling
+                await rebuildappsAction()
+                return true
+            } catch {
+                return false
+            }
+        } else {
+            // Remove URL scheme flag
+            do {
+                try fileManager.removeItem(atPath: urlSchemeFlagPath)
+                // Rebuild apps after disabling
+                await rebuildappsAction()
+                return true
+            } catch {
+                return false
+            }
+        }
+    }
+    
+    func hideAllCTBugApps() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/uicache"
+        task.arguments = ["-r"]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func unhideAllCTBugApps() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/uicache"
+        task.arguments = ["-a"]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    // MARK: - NEW: OpenSSH Service Management (BASERET PÅ DEEPWIKI)
+    func opensshAction(_ enable: Bool) async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        if enable {
+            // Start SSH service
+            let task = Process()
+            task.launchPath = "\(jbroot)/usr/bin/bootstrapd"
+            task.arguments = ["openssh"]
+            
+            do {
+                try task.run()
+                return true
+            } catch {
+                return false
+            }
+        } else {
+            // Stop SSH service
+            let task = Process()
+            task.launchPath = "/usr/bin/killall"
+            task.arguments = ["sshd"]
+            
+            do {
+                try task.run()
+                task.waitUntilExit()
+                return task.terminationStatus == 0
+            } catch {
+                return false
+            }
+        }
+    }
+    
+    // MARK: - NEW: Command Line Interface (BASERET PÅ DEEPWIKI)
+    func bootstrap() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/bootstrap"
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func unbootstrap() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/unbootstrap"
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func enableApp(_ bundlePath: String) async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/enableapp"
+        task.arguments = [bundlePath]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func disableApp(_ bundlePath: String) async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/disableapp"
+        task.arguments = [bundlePath]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func rebuildIconCache() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/rebuildiconcache"
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    func reboot() async -> Bool {
+        guard let jbroot = jbrootPath else { return false }
+        
+        let task = Process()
+        task.launchPath = "\(jbroot)/usr/bin/reboot"
+        
+        do {
+            try task.run()
+            return true
+        } catch {
+            return false
+        }
+    }
+    
     // MARK: - Tweak Management
     func enableTweaksForApp(_ bundlePath: String) async -> Bool {
         guard let jbroot = jbrootPath else { return false }
@@ -435,7 +804,9 @@ class RoothideBootstrapService: ObservableObject {
             jbrootPath: jbrootPath,
             jbrand: jbrand,
             status: bootstrapStatus,
-            tools: availableTools
+            tools: availableTools,
+            sshStatus: sshStatus,
+            tweakStatus: tweakStatus
         )
     }
 }
@@ -447,6 +818,8 @@ struct BootstrapInfo {
     let jbrand: String?
     let status: RoothideBootstrapService.BootstrapStatus
     let tools: [RoothideBootstrapService.BootstrapTool]
+    let sshStatus: RoothideBootstrapService.SSHStatus
+    let tweakStatus: RoothideBootstrapService.TweakStatus
     
     var toolCount: Int {
         return tools.count
@@ -454,6 +827,14 @@ struct BootstrapInfo {
     
     var isRunning: Bool {
         return status == .running
+    }
+    
+    var isSSHRunning: Bool {
+        return sshStatus == .running
+    }
+    
+    var areTweaksEnabled: Bool {
+        return tweakStatus == .enabled
     }
 }
 

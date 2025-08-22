@@ -1,213 +1,384 @@
 import SwiftUI
-import WebKit
-import UserNotifications
 
 @main
 struct UniversalWebContainerApp: App {
-    @StateObject private var webAppManager = WebAppManager()
-    @StateObject private var capabilityService = CapabilityService()
-    @StateObject private var sessionManager = SessionManager()
-    @StateObject private var notificationManager = NotificationManager()
-    @StateObject private var offlineManager = OfflineManager()
-    @StateObject private var syncManager = SyncManager()
-    @StateObject private var keychainManager = KeychainManager.shared
+    @StateObject private var environmentDetector = EnvironmentDetector.shared
+    @StateObject private var stealthCapabilityService = StealthCapabilityService.shared
+    @StateObject private var roothideBootstrapService = RoothideBootstrapService.shared
+    @StateObject private var trollStoreEnhancedService = TrollStoreEnhancedService.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(webAppManager)
-                .environmentObject(capabilityService)
-                .environmentObject(sessionManager)
-                .environmentObject(notificationManager)
-                .environmentObject(offlineManager)
-                .environmentObject(syncManager)
-                .environmentObject(keychainManager)
+                .environmentObject(environmentDetector)
+                .environmentObject(stealthCapabilityService)
+                .environmentObject(roothideBootstrapService)
+                .environmentObject(trollStoreEnhancedService)
                 .onAppear {
-                    setupApp()
+                    // Initialize all services
+                    environmentDetector.detectEnvironment()
+                    stealthCapabilityService.detectCapabilities()
+                    roothideBootstrapService.detectBootstrap()
+                    trollStoreEnhancedService.detectTrollStore()
+                    
+                    print("🚀 Universal WebContainer App Started")
+                    print("🌍 Environment: \(environmentDetector.currentEnvironment.displayName)")
+                    print("🔧 Stealth Capabilities: \(stealthCapabilityService.jailbreakPowerLevel.displayName)")
+                    print("📱 Bootstrap: \(roothideBootstrapService.bootstrapStatus.displayName)")
+                    print("⚡ TrollStore: \(trollStoreEnhancedService.isTrollStoreInstalled ? "Installed" : "Not Installed")")
                 }
         }
     }
+}
+
+// MARK: - Content View
+struct ContentView: View {
+    @EnvironmentObject var environmentDetector: EnvironmentDetector
+    @EnvironmentObject var stealthCapabilityService: StealthCapabilityService
+    @EnvironmentObject var roothideBootstrapService: RoothideBootstrapService
+    @EnvironmentObject var trollStoreEnhancedService: TrollStoreEnhancedService
     
-    private func setupApp() {
-        // Create necessary directories
-        AppUtilities.createDirectories()
-        
-        // Initialize capability detection
-        capabilityService.detectCapabilities()
-        
-        // Request notification permissions
-        notificationManager.requestPermissions()
-        
-        // Load saved webapps and settings
-        webAppManager.loadWebApps()
-        
-        // Initialize sync if enabled
-        if syncManager.isSyncEnabled {
-            syncManager.initializeSync()
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            // MARK: - Main Launcher Tab
+            LauncherView()
+                .tabItem {
+                    Image(systemName: "app.badge")
+                    Text("Launcher")
+                }
+                .tag(0)
+            
+            // MARK: - Environment Status Tab
+            EnvironmentStatusView()
+                .tabItem {
+                    Image(systemName: "gearshape")
+                    Text("Status")
+                }
+                .tag(1)
+            
+            // MARK: - System Maintenance Tab
+            SystemMaintenanceView()
+                .tabItem {
+                    Image(systemName: "wrench.and.screwdriver")
+                    Text("Maintenance")
+                }
+                .tag(2)
+            
+            // MARK: - Advanced Tweak Management Tab
+            AdvancedTweakManagementView()
+                .tabItem {
+                    Image(systemName: "slider.horizontal.3")
+                    Text("Tweaks")
+                }
+                .tag(3)
+            
+            // MARK: - Settings Tab
+            SettingsView()
+                .tabItem {
+                    Image(systemName: "gear")
+                    Text("Settings")
+                }
+                .tag(4)
         }
-        
-        // Setup offline manager
-        offlineManager.initialize()
-        
-        // Verify keychain availability
-        if !keychainManager.isKeychainAvailable {
-            print("Warning: Keychain is not available")
-        }
-        
-        print("Universal WebContainer initialized with capabilities: \(capabilityService.capabilities)")
+        .accentColor(.blue)
     }
 }
 
-// MARK: - App Configuration
-extension UniversalWebContainerApp {
-    static let appName = "Universal WebContainer"
-    static let appVersion = "1.0.0"
-    static let bundleIdentifier = "com.universalwebcontainer.app"
+// MARK: - Environment Status View
+struct EnvironmentStatusView: View {
+    @EnvironmentObject var environmentDetector: EnvironmentDetector
+    @EnvironmentObject var stealthCapabilityService: StealthCapabilityService
+    @EnvironmentObject var roothideBootstrapService: RoothideBootstrapService
+    @EnvironmentObject var trollStoreEnhancedService: TrollStoreEnhancedService
     
-    // App-wide settings
-    static let defaultSettings = AppSettings(
-        enableDesktopMode: false,
-        enableAdBlock: true,
-        enableNotifications: true,
-        enableOfflineMode: true,
-        powerMode: .balanced,
-        syncEnabled: false
-    )
-}
-
-// MARK: - App Settings Model
-struct AppSettings: Codable {
-    var enableDesktopMode: Bool
-    var enableAdBlock: Bool
-    var enableNotifications: Bool
-    var enableOfflineMode: Bool
-    var powerMode: PowerMode
-    var syncEnabled: Bool
-    
-    enum PowerMode: String, CaseIterable, Codable {
-        case ultraLow = "ultra_low"
-        case balanced = "balanced"
-        case performance = "performance"
-        
-        var displayName: String {
-            switch self {
-            case .ultraLow: return "Ultra Low"
-            case .balanced: return "Balanced"
-            case .performance: return "Performance"
+    var body: some View {
+        NavigationView {
+            List {
+                // MARK: - Environment Overview
+                Section("Environment Overview") {
+                    EnvironmentStatusCard(
+                        title: "Current Environment",
+                        value: environmentDetector.currentEnvironment.displayName,
+                        icon: environmentDetector.currentEnvironment.icon,
+                        color: environmentDetector.currentEnvironment.color
+                    )
+                    
+                    EnvironmentStatusCard(
+                        title: "Jailbreak Power Level",
+                        value: stealthCapabilityService.jailbreakPowerLevel.displayName,
+                        icon: stealthCapabilityService.jailbreakPowerLevel.icon,
+                        color: stealthCapabilityService.jailbreakPowerLevel.color
+                    )
+                }
+                
+                // MARK: - Bootstrap Status
+                if roothideBootstrapService.isBootstrapInstalled {
+                    Section("roothide Bootstrap") {
+                        EnvironmentStatusCard(
+                            title: "Bootstrap Status",
+                            value: roothideBootstrapService.bootstrapStatus.displayName,
+                            icon: roothideBootstrapService.bootstrapStatus.icon,
+                            color: roothideBootstrapService.bootstrapStatus.color
+                        )
+                        
+                        if let jbroot = roothideBootstrapService.jbrootPath {
+                            EnvironmentStatusCard(
+                                title: "jbroot Path",
+                                value: jbroot,
+                                icon: "folder",
+                                color: "blue"
+                            )
+                        }
+                        
+                        if let jbrand = roothideBootstrapService.jbrand {
+                            EnvironmentStatusCard(
+                                title: "jbrand",
+                                value: jbrand,
+                                icon: "tag",
+                                color: "green"
+                            )
+                        }
+                        
+                        EnvironmentStatusCard(
+                            title: "Available Tools",
+                            value: "\(roothideBootstrapService.availableTools.count) tools",
+                            icon: "wrench.and.screwdriver",
+                            color: "orange"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "SSH Status",
+                            value: roothideBootstrapService.sshStatus.displayName,
+                            icon: roothideBootstrapService.sshStatus.icon,
+                            color: roothideBootstrapService.sshStatus == .running ? "green" : "orange"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "Tweak Status",
+                            value: roothideBootstrapService.tweakStatus.displayName,
+                            icon: roothideBootstrapService.tweakStatus.icon,
+                            color: roothideBootstrapService.tweakStatus == .enabled ? "green" : "red"
+                        )
+                    }
+                }
+                
+                // MARK: - TrollStore Status
+                if trollStoreEnhancedService.isTrollStoreInstalled {
+                    Section("TrollStore") {
+                        EnvironmentStatusCard(
+                            title: "TrollStore Status",
+                            value: "Installed",
+                            icon: "checkmark.circle",
+                            color: "green"
+                        )
+                        
+                        if let version = trollStoreEnhancedService.trollStoreVersion {
+                            EnvironmentStatusCard(
+                                title: "Version",
+                                value: version,
+                                icon: "tag",
+                                color: "blue"
+                            )
+                        }
+                        
+                        EnvironmentStatusCard(
+                            title: "Available Entitlements",
+                            value: "\(trollStoreEnhancedService.availableEntitlements.count) entitlements",
+                            icon: "shield",
+                            color: "purple"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "Installed Apps",
+                            value: "\(trollStoreEnhancedService.installedApps.count) apps",
+                            icon: "app.badge",
+                            color: "orange"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "JIT Enabled Apps",
+                            value: "\(trollStoreEnhancedService.jitEnabledApps.count) apps",
+                            icon: "bolt",
+                            color: "yellow"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "LDID Status",
+                            value: trollStoreEnhancedService.ldidStatus.displayName,
+                            icon: trollStoreEnhancedService.ldidStatus.icon,
+                            color: trollStoreEnhancedService.ldidStatus == .installed ? "green" : "orange"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "Installation Method",
+                            value: trollStoreEnhancedService.installationMethod.displayName,
+                            icon: "arrow.down.circle",
+                            color: "blue"
+                        )
+                        
+                        EnvironmentStatusCard(
+                            title: "Developer Mode",
+                            value: trollStoreEnhancedService.developerModeEnabled ? "Enabled" : "Disabled",
+                            icon: trollStoreEnhancedService.developerModeEnabled ? "checkmark.circle" : "xmark.circle",
+                            color: trollStoreEnhancedService.developerModeEnabled ? "green" : "red"
+                        )
+                    }
+                }
+                
+                // MARK: - Available Features
+                Section("Available Features") {
+                    ForEach(environmentDetector.availableFeatures, id: \.self) { feature in
+                        EnvironmentStatusCard(
+                            title: feature.displayName,
+                            value: "Available",
+                            icon: feature.icon,
+                            color: "green"
+                        )
+                    }
+                }
+                
+                // MARK: - Stealth Capabilities
+                Section("Stealth Capabilities") {
+                    ForEach(stealthCapabilityService.availableCapabilities, id: \.self) { capability in
+                        EnvironmentStatusCard(
+                            title: capability.displayName,
+                            value: "Available",
+                            icon: capability.icon,
+                            color: "green"
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Environment Status")
+            .refreshable {
+                environmentDetector.refreshEnvironment()
+                stealthCapabilityService.detectCapabilities()
+                roothideBootstrapService.refreshBootstrap()
+                trollStoreEnhancedService.refreshTrollStore()
             }
         }
-        
-        var description: String {
-            switch self {
-            case .ultraLow: return "Minimal power usage, reduced features"
-            case .balanced: return "Standard performance and power usage"
-            case .performance: return "Maximum performance, higher power usage"
+    }
+}
+
+// MARK: - Environment Status Card
+struct EnvironmentStatusCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(Color(color))
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text(value)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
+            
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Settings View
+struct SettingsView: View {
+    @EnvironmentObject var environmentDetector: EnvironmentDetector
+    @EnvironmentObject var stealthCapabilityService: StealthCapabilityService
+    @EnvironmentObject var roothideBootstrapService: RoothideBootstrapService
+    @EnvironmentObject var trollStoreEnhancedService: TrollStoreEnhancedService
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section("Environment Detection") {
+                    Button("Refresh Environment Detection") {
+                        environmentDetector.refreshEnvironment()
+                    }
+                    
+                    Button("Refresh Stealth Capabilities") {
+                        stealthCapabilityService.detectCapabilities()
+                    }
+                }
+                
+                if roothideBootstrapService.isBootstrapInstalled {
+                    Section("roothide Bootstrap") {
+                        Button("Refresh Bootstrap Status") {
+                            roothideBootstrapService.refreshBootstrap()
+                        }
+                        
+                        Button("Start Bootstrap Daemon") {
+                            Task {
+                                await roothideBootstrapService.startBootstrapd()
+                            }
+                        }
+                        
+                        Button("Stop Bootstrap Daemon") {
+                            Task {
+                                await roothideBootstrapService.stopBootstrapd()
+                            }
+                        }
+                    }
+                }
+                
+                if trollStoreEnhancedService.isTrollStoreInstalled {
+                    Section("TrollStore") {
+                        Button("Refresh TrollStore Status") {
+                            trollStoreEnhancedService.refreshTrollStore()
+                        }
+                        
+                        Button("Install Persistence Helper") {
+                            Task {
+                                await trollStoreEnhancedService.installPersistenceHelper()
+                            }
+                        }
+                        
+                        Button("Remove Persistence Helper") {
+                            Task {
+                                await trollStoreEnhancedService.removePersistenceHelper()
+                            }
+                        }
+                    }
+                }
+                
+                Section("About") {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text("1")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Settings")
         }
     }
 }
 
-// MARK: - App Constants
-struct AppConstants {
-    // URLs and endpoints
-    static let defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
-    static let desktopUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    
-    // Storage keys
-    static let webAppsKey = "saved_webapps"
-    static let settingsKey = "app_settings"
-    static let foldersKey = "saved_folders"
-    static let sessionsKey = "saved_sessions"
-    
-    // File paths
-    static let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-    static let webAppsPath = documentsPath.appendingPathComponent("WebApps")
-    static let cachePath = documentsPath.appendingPathComponent("Cache")
-    static let offlinePath = documentsPath.appendingPathComponent("Offline")
-    
-    // Notification identifiers
-    static let webAppNotificationCategory = "WEBAPP_NOTIFICATION"
-    static let backgroundTaskIdentifier = "com.universalwebcontainer.backgroundtask"
-    
-    // Timeouts and intervals
-    static let sessionTimeout: TimeInterval = 30 * 24 * 60 * 60 // 30 days
-    static let cacheCleanupInterval: TimeInterval = 7 * 24 * 60 * 60 // 7 days
-    static let syncInterval: TimeInterval = 5 * 60 // 5 minutes
-    
-    // Feature flags
-    static let enableTrollStoreFeatures = true
-    static let enableJailbreakFeatures = true
-    static let enableAdvancedFeatures = true
-}
-
-// MARK: - App Errors
-enum AppError: Error, LocalizedError {
-    case capabilityNotAvailable(String)
-    case webAppNotFound(String)
-    case sessionExpired(String)
-    case networkError(String)
-    case storageError(String)
-    case permissionDenied(String)
-    
-    var errorDescription: String? {
-        switch self {
-        case .capabilityNotAvailable(let feature):
-            return "Feature '\(feature)' is not available on this device"
-        case .webAppNotFound(let id):
-            return "WebApp with ID '\(id)' not found"
-        case .sessionExpired(let webApp):
-            return "Session expired for '\(webApp)'"
-        case .networkError(let message):
-            return "Network error: \(message)"
-        case .storageError(let message):
-            return "Storage error: \(message)"
-        case .permissionDenied(let permission):
-            return "Permission denied for: \(permission)"
-        }
-    }
-}
-
-// MARK: - App Utilities
-struct AppUtilities {
-    static func createDirectories() {
-        let paths = [
-            AppConstants.webAppsPath,
-            AppConstants.cachePath,
-            AppConstants.offlinePath
-        ]
-        
-        for path in paths {
-            try? FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
-        }
-    }
-    
-    static func getAppVersion() -> String {
-        return Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-    }
-    
-    static func getBuildNumber() -> String {
-        return Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-    }
-    
-    static func isRunningOnSimulator() -> Bool {
-        #if targetEnvironment(simulator)
-        return true
-        #else
-        return false
-        #endif
-    }
-    
-    static func getDeviceModel() -> String {
-        var systemInfo = utsname()
-        uname(&systemInfo)
-        let machineMirror = Mirror(reflecting: systemInfo.machine)
-        return machineMirror.children.reduce("") { identifier, element in
-            guard let value = element.value as? Int8, value != 0 else { return identifier }
-            return identifier + String(UnicodeScalar(UInt8(value))!)
-        }
-    }
-    
-    static func getiOSVersion() -> String {
-        return UIDevice.current.systemVersion
+// MARK: - Preview
+struct UniversalWebContainerApp_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(EnvironmentDetector.shared)
+            .environmentObject(StealthCapabilityService.shared)
+            .environmentObject(RoothideBootstrapService.shared)
+            .environmentObject(TrollStoreEnhancedService.shared)
     }
 }

@@ -2,293 +2,82 @@ name: Release Universal WebContainer
 
 on:
   release:
-    types: [ published ]
+    types: [published]
   workflow_dispatch:
     inputs:
-      version:
+      release_version:
         description: 'Release version'
         required: true
-        default: '1.0.0'
-      release_notes:
-        description: 'Release notes'
-        required: false
-        default: ''
-      ios_versions:
-        description: 'iOS versions to build'
-        required: true
-        default: '15.0,15.5,16.0,16.5,17.0'
+        default: 'v1.0.0'
         type: string
 
-env:
-  XCODE_VERSION: '15.2'
-
 jobs:
-  build-release:
-    runs-on: macos-latest
-    
-    strategy:
-      matrix:
-        build_type: [standard, trollstore, universal]
-        ios_version: ['15.0', '15.5', '16.0', '16.5', '17.0']
-        include:
-          - build_type: standard
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions.plist
-            artifact_name: UniversalWebContainer
-            ios_version: '15.0'
-            device_name: 'iPhone 15'
-          - build_type: trollstore
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions-trollstore.plist
-            artifact_name: UniversalWebContainer-TrollStore
-            ios_version: '15.5'
-            device_name: 'iPhone 14'
-          - build_type: universal
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions-universal.plist
-            artifact_name: UniversalWebContainer-Universal
-            ios_version: '17.0'
-            device_name: 'iPhone 15 Pro'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: ${{ env.XCODE_VERSION }}
-        
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true
-        
-    - name: Install dependencies
-      run: |
-        gem install cocoapods
-        pod install --repo-update
-        
-    - name: Cache derived data
-      uses: actions/cache@v3
-      with:
-        path: ~/Library/Developer/Xcode/DerivedData
-        key: derived-data-${{ matrix.build_type }}-${{ matrix.ios_version }}-${{ hashFiles('**/*.xcodeproj') }}
-        restore-keys: |
-          derived-data-${{ matrix.build_type }}-${{ matrix.ios_version }}-
-          derived-data-${{ matrix.build_type }}-
-          derived-data-
-          
-    - name: Build project
-      run: |
-        xcodebuild clean build \
-          -project UniversalWebContainer.xcodeproj \
-          -scheme ${{ matrix.scheme }} \
-          -configuration ${{ matrix.configuration }} \
-          -destination 'platform=iOS Simulator,name=${{ matrix.device_name }},OS=${{ matrix.ios_version }}' \
-          -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
-          IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_version }} \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
-          
-    - name: Archive project
-      run: |
-        xcodebuild archive \
-          -project UniversalWebContainer.xcodeproj \
-          -scheme ${{ matrix.scheme }} \
-          -configuration ${{ matrix.configuration }} \
-          -archivePath build/${{ matrix.artifact_name }}-iOS${{ matrix.ios_version }}.xcarchive \
-          -destination generic/platform=iOS \
-          IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_version }} \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
-          
-    - name: Export IPA
-      run: |
-        xcodebuild -exportArchive \
-          -archivePath build/${{ matrix.artifact_name }}-iOS${{ matrix.ios_version }}.xcarchive \
-          -exportPath build/ \
-          -exportOptionsPlist ${{ matrix.export_options }} \
-          -allowProvisioningUpdates
-          
-    - name: Rename IPA with version info
-      run: |
-        cd build
-        for file in *.ipa; do
-          mv "$file" "${{ matrix.artifact_name }}-iOS${{ matrix.ios_version }}.ipa"
-        done
-          
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ matrix.artifact_name }}-iOS${{ matrix.ios_version }}
-        path: build/${{ matrix.artifact_name }}-iOS${{ matrix.ios_version }}.ipa
-        
   create-release:
     runs-on: macos-latest
-    needs: build-release
-    if: github.event_name == 'release'
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Download all artifacts
-      uses: actions/download-artifact@v3
-      with:
-        path: artifacts/
-        
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          artifacts/UniversalWebContainer-iOS15.0/*.ipa
-          artifacts/UniversalWebContainer-iOS15.5/*.ipa
-          artifacts/UniversalWebContainer-iOS16.0/*.ipa
-          artifacts/UniversalWebContainer-iOS16.5/*.ipa
-          artifacts/UniversalWebContainer-iOS17.0/*.ipa
-          artifacts/UniversalWebContainer-TrollStore-iOS15.0/*.ipa
-          artifacts/UniversalWebContainer-TrollStore-iOS15.5/*.ipa
-          artifacts/UniversalWebContainer-TrollStore-iOS16.0/*.ipa
-          artifacts/UniversalWebContainer-TrollStore-iOS16.5/*.ipa
-          artifacts/UniversalWebContainer-TrollStore-iOS17.0/*.ipa
-          artifacts/UniversalWebContainer-Universal-iOS15.0/*.ipa
-          artifacts/UniversalWebContainer-Universal-iOS15.5/*.ipa
-          artifacts/UniversalWebContainer-Universal-iOS16.0/*.ipa
-          artifacts/UniversalWebContainer-Universal-iOS16.5/*.ipa
-          artifacts/UniversalWebContainer-Universal-iOS17.0/*.ipa
-        body: |
-          # Universal WebContainer v${{ github.event.release.tag_name }}
-          
-          ## Progressive Enhancement Features
-          
-          This release includes IPAs for multiple iOS versions with different capability levels:
-          
-          ### UniversalWebContainer.ipa (Standard)
-          - **Distribution**: AltStore, Sideloadly, Xcode
-          - **Capabilities**: Basic WebKit features
-          - **Features**: Webapp management, standard session persistence
-          - **Feature Level**: 1
-          - **iOS Support**: 15.0, 15.5, 16.0, 16.5, 17.0
-          
-          ### UniversalWebContainer-TrollStore.ipa (Enhanced)
-          - **Distribution**: TrollStore with arbitrary entitlements
-          - **Capabilities**: Unsandboxed access, filesystem integration
-          - **Features**: Browser import, enhanced persistence, system integration
-          - **Feature Level**: 2
-          - **iOS Support**: 15.0, 15.5, 16.0, 16.5, 17.0
-          
-          ### UniversalWebContainer-Universal.ipa (Universal)
-          - **Distribution**: Universal binary for all devices
-          - **Capabilities**: Optimized for different device types
-          - **Features**: Adaptive UI, optimized performance
-          - **Feature Level**: 1.5
-          - **iOS Support**: 15.0, 15.5, 16.0, 16.5, 17.0
-          
-          ## Installation Instructions
-          
-          ### Standard Installation
-          1. Download the appropriate `UniversalWebContainer-iOS[VERSION].ipa` for your iOS version
-          2. Install via AltStore, Sideloadly, or Xcode
-          3. Trust the developer certificate in Settings
-          
-          ### TrollStore Installation
-          1. Download the appropriate `UniversalWebContainer-TrollStore-iOS[VERSION].ipa` for your iOS version
-          2. Install via TrollStore
-          3. Grant necessary permissions when prompted
-          
-          ### Universal Installation
-          1. Download the appropriate `UniversalWebContainer-Universal-iOS[VERSION].ipa` for your iOS version
-          2. Install via any supported method
-          3. App will automatically adapt to your device
-          
-          ## iOS Version Compatibility
-          
-          | iOS Version | Standard | TrollStore | Universal |
-          |-------------|----------|------------|-----------|
-          | iOS 15.0    | ✅       | ✅         | ✅        |
-          | iOS 15.5    | ✅       | ✅         | ✅        |
-          | iOS 16.0    | ✅       | ✅         | ✅        |
-          | iOS 16.5    | ✅       | ✅         | ✅        |
-          | iOS 17.0    | ✅       | ✅         | ✅        |
-          
-          ## What's New
-          
-          - Progressive capability detection
-          - Enhanced session persistence
-          - TrollStore integration
-          - Browser data import (TrollStore only)
-          - SpringBoard integration (TrollStore only)
-          - Universal binary support
-          - Multi-iOS version support
-          
-          ## System Requirements
-          
-          - iOS 15.0 or later
-          - 100MB available storage
-          - Internet connection for web apps
-          
-          ## Support
-          
-          For support and feature requests, please visit our GitHub repository.
-          
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-  deploy-testflight:
-    runs-on: macos-latest
-    needs: build-release
-    if: github.event_name == 'release' && contains(github.event.release.tag_name, 'beta')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Download Standard IPA (iOS 17.0)
-      uses: actions/download-artifact@v3
-      with:
-        name: UniversalWebContainer-iOS17.0
-        path: artifacts/
-        
-    - name: Deploy to TestFlight
-      run: |
-        xcrun altool --upload-app \
-          --type ios \
-          --file artifacts/UniversalWebContainer-iOS17.0.ipa \
-          --username ${{ secrets.APPLE_ID }} \
-          --password ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
-        
-  notify-release:
-    runs-on: macos-latest
-    needs: [build-release, create-release]
-    if: always()
-    
-    steps:
-    - name: Notify release status
-      run: |
-        if [ "${{ needs.build-release.result }}" == "success" ]; then
-          echo "✅ Release build completed successfully!"
-          echo "📱 Built for iOS versions: 15.0, 15.5, 16.0, 16.5, 17.0"
-          echo "🔧 Build types: standard, trollstore, universal"
-          echo "📦 Total IPAs created: 15 (3 types × 5 iOS versions)"
-          
-          if [ "${{ needs.create-release.result }}" == "success" ]; then
-            echo "📦 Release created successfully!"
-          else
-            echo "⚠️ Release creation failed"
-          fi
-        else
-          echo "❌ Release build failed!"
-          echo "Please check the logs for details."
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Install ldid
+        run: |
+          brew install ldid
+
+      - name: Build Universal IPA
+        run: |
+          xcodebuild -workspace UniversalWebContainer.xcworkspace \
+            -scheme UniversalWebContainer \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/UniversalWebContainer.xcarchive \
+            archive
+
+      - name: Export Universal IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/UniversalWebContainer.xcarchive \
+            -exportPath build/ \
+            -exportOptionsPlist exportOptions-universal.plist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/UniversalWebContainer.ipa
+          body: |
+            ## 🚀 Universal WebContainer Release
+            
+            ### 📱 Features
+            - ✅ Universal IPA for all iOS versions (15.0-17.0)
+            - ✅ TrollStore compatibility
+            - ✅ Smart environment detection
+            - ✅ Advanced session management
+            - ✅ Offline support
+            
+            ### 🔧 Installation
+            1. Download the IPA file
+            2. Install via AltStore, Sideloadly, or TrollStore
+            3. Trust developer certificate in Settings
+            
+            ### 🎯 Compatibility
+            - **iOS 15.0-17.0**: Full support
+            - **Standard iOS**: Basic features
+            - **TrollStore**: Advanced features
+            - **Jailbreak**: Enhanced capabilities
+            
+            ### 📊 Build Info
+            - **Build Date**: ${{ github.event.release.published_at }}
+            - **Commit**: ${{ github.sha }}
+            - **Version**: ${{ github.event.inputs.release_version || github.event.release.tag_name }}
+            
+            ### 🔒 Security
+            - Hardware fingerprinting
+            - IP-based authorization
+            - Environment key validation
+            - Secure local builder system
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

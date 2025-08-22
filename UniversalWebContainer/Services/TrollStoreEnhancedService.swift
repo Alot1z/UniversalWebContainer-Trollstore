@@ -8,11 +8,60 @@ class TrollStoreEnhancedService: ObservableObject {
     @Published var availableEntitlements: [TrollStoreEntitlement] = []
     @Published var installedApps: [TrollStoreApp] = []
     @Published var jitEnabledApps: [String] = []
+    @Published var ldidStatus: LDIDStatus = .unknown
+    @Published var installationMethod: InstallationMethod = .installd
+    @Published var developerModeEnabled: Bool = false
     
     static let shared = TrollStoreEnhancedService()
     
     private let fileManager = FileManager.default
     private let userDefaults = UserDefaults.standard
+    
+    // MARK: - LDID Status
+    enum LDIDStatus: String, CaseIterable {
+        case unknown = "unknown"
+        case notInstalled = "not_installed"
+        case installed = "installed"
+        case outdated = "outdated"
+        
+        var displayName: String {
+            switch self {
+            case .unknown: return "Unknown"
+            case .notInstalled: return "Not Installed"
+            case .installed: return "Installed"
+            case .outdated: return "Outdated"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .unknown: return "questionmark.circle"
+            case .notInstalled: return "xmark.circle"
+            case .installed: return "checkmark.circle"
+            case .outdated: return "exclamationmark.triangle"
+            }
+        }
+    }
+    
+    // MARK: - Installation Method
+    enum InstallationMethod: String, CaseIterable {
+        case installd = "installd"
+        case custom = "custom"
+        
+        var displayName: String {
+            switch self {
+            case .installd: return "installd"
+            case .custom: return "Custom"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .installd: return "Use system installd for installation"
+            case .custom: return "Use custom installation method"
+            }
+        }
+    }
     
     // MARK: - TrollStore Entitlements
     enum TrollStoreEntitlement: String, CaseIterable {
@@ -114,6 +163,9 @@ class TrollStoreEnhancedService: ObservableObject {
             let entitlements = await getAvailableEntitlements()
             let apps = await getInstalledApps()
             let jitApps = await getJitEnabledApps()
+            let ldid = await getLDIDStatus()
+            let installMethod = await getInstallationMethod()
+            let devMode = await isDeveloperModeEnabled()
             
             await MainActor.run {
                 self.isTrollStoreInstalled = installed
@@ -121,6 +173,9 @@ class TrollStoreEnhancedService: ObservableObject {
                 self.availableEntitlements = entitlements
                 self.installedApps = apps
                 self.jitEnabledApps = jitApps
+                self.ldidStatus = ldid
+                self.installationMethod = installMethod
+                self.developerModeEnabled = devMode
                 
                 print("🔍 TrollStore detection:")
                 print("   Installed: \(installed)")
@@ -128,6 +183,9 @@ class TrollStoreEnhancedService: ObservableObject {
                 print("   Entitlements: \(entitlements.count)")
                 print("   Apps: \(apps.count)")
                 print("   JIT Apps: \(jitApps.count)")
+                print("   LDID: \(ldid.displayName)")
+                print("   Install Method: \(installMethod.displayName)")
+                print("   Developer Mode: \(devMode)")
             }
         }
     }
@@ -195,6 +253,69 @@ class TrollStoreEnhancedService: ObservableObject {
             if fileManager.fileExists(atPath: fullPath) {
                 return true
             }
+        }
+        
+        return false
+    }
+    
+    // MARK: - NEW: LDID Detection (BASERET PÅ DEEPWIKI)
+    private func getLDIDStatus() async -> LDIDStatus {
+        // Check if ldid is installed
+        let ldidPaths = [
+            "/usr/bin/ldid",
+            "/usr/local/bin/ldid"
+        ]
+        
+        for path in ldidPaths {
+            if fileManager.fileExists(atPath: path) {
+                // Check if it's outdated
+                if await isLDIDOutdated(path) {
+                    return .outdated
+                }
+                return .installed
+            }
+        }
+        
+        return .notInstalled
+    }
+    
+    private func isLDIDOutdated(_ ldidPath: String) async -> Bool {
+        let task = Process()
+        task.launchPath = ldidPath
+        task.arguments = ["--version"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            // Check version (this is a simplified check)
+            return output.contains("2.1.5") // Example outdated version
+        } catch {
+            return false
+        }
+    }
+    
+    // MARK: - NEW: Installation Method Detection (BASERET PÅ DEEPWIKI)
+    private func getInstallationMethod() async -> InstallationMethod {
+        // Check user defaults for installation method preference
+        let method = userDefaults.string(forKey: "TrollStoreInstallationMethod") ?? "installd"
+        return InstallationMethod(rawValue: method) ?? .installd
+    }
+    
+    // MARK: - NEW: Developer Mode Detection (BASERET PÅ DEEPWIKI)
+    private func isDeveloperModeEnabled() async -> Bool {
+        // Check if developer mode is enabled
+        let devModePath = "/var/mobile/Library/Preferences/com.apple.developer.plist"
+        
+        if let plistData = fileManager.contents(atPath: devModePath),
+           let plist = try? PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any] {
+            return plist["DeveloperModeEnabled"] as? Bool ?? false
         }
         
         return false
@@ -393,6 +514,80 @@ class TrollStoreEnhancedService: ObservableObject {
         return success
     }
     
+    // MARK: - NEW: Utilities in Settings (BASERET PÅ DEEPWIKI)
+    func respring() async -> Bool {
+        let (success, _) = await executeRootCommand("respring")
+        return success
+    }
+    
+    func refreshAppRegistrations() async -> Bool {
+        let (success, _) = await executeRootCommand("refresh-registrations")
+        return success
+    }
+    
+    func rebuildIconCache() async -> Bool {
+        let (success, _) = await executeRootCommand("rebuild-iconcache")
+        return success
+    }
+    
+    func transferApps() async -> Bool {
+        let (success, _) = await executeRootCommand("transfer-apps")
+        return success
+    }
+    
+    // MARK: - NEW: Advanced Installation Methods (BASERET PÅ DEEPWIKI)
+    func setInstallationMethod(_ method: InstallationMethod) async -> Bool {
+        userDefaults.set(method.rawValue, forKey: "TrollStoreInstallationMethod")
+        return true
+    }
+    
+    func setUninstallationMethod(_ method: InstallationMethod) async -> Bool {
+        userDefaults.set(method.rawValue, forKey: "TrollStoreUninstallationMethod")
+        return true
+    }
+    
+    func enableDeveloperMode() async -> Bool {
+        let (success, _) = await executeRootCommand("enable-developer-mode")
+        if success {
+            developerModeEnabled = true
+        }
+        return success
+    }
+    
+    func disableDeveloperMode() async -> Bool {
+        let (success, _) = await executeRootCommand("disable-developer-mode")
+        if success {
+            developerModeEnabled = false
+        }
+        return success
+    }
+    
+    // MARK: - NEW: ldid Integration (BASERET PÅ DEEPWIKI)
+    func updateLDID() async -> Bool {
+        let (success, _) = await executeRootCommand("update-ldid")
+        if success {
+            // Refresh LDID status
+            ldidStatus = await getLDIDStatus()
+        }
+        return success
+    }
+    
+    func installUnsignedIPA(_ ipaPath: String) async -> Bool {
+        // First sign with ldid
+        let signResult = await signWithLDID(ipaPath)
+        if !signResult {
+            return false
+        }
+        
+        // Then install
+        return await installApp(ipaPath)
+    }
+    
+    private func signWithLDID(_ ipaPath: String) async -> Bool {
+        let (success, _) = await executeRootCommand("ldid-sign \(ipaPath)")
+        return success
+    }
+    
     // MARK: - Public Methods
     func refreshTrollStore() {
         detectTrollStore()
@@ -404,7 +599,10 @@ class TrollStoreEnhancedService: ObservableObject {
             version: trollStoreVersion,
             entitlements: availableEntitlements,
             apps: installedApps,
-            jitApps: jitEnabledApps
+            jitApps: jitEnabledApps,
+            ldidStatus: ldidStatus,
+            installationMethod: installationMethod,
+            developerModeEnabled: developerModeEnabled
         )
     }
 }
@@ -416,6 +614,9 @@ struct TrollStoreInfo {
     let entitlements: [TrollStoreEnhancedService.TrollStoreEntitlement]
     let apps: [TrollStoreEnhancedService.TrollStoreApp]
     let jitApps: [String]
+    let ldidStatus: TrollStoreEnhancedService.LDIDStatus
+    let installationMethod: TrollStoreEnhancedService.InstallationMethod
+    let developerModeEnabled: Bool
     
     var entitlementCount: Int {
         return entitlements.count
@@ -427,6 +628,10 @@ struct TrollStoreInfo {
     
     var jitAppCount: Int {
         return jitApps.count
+    }
+    
+    var isLDIDInstalled: Bool {
+        return ldidStatus == .installed
     }
 }
 

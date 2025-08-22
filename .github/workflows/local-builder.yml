@@ -1,45 +1,30 @@
 name: Local Builder Trigger
+
 on:
   workflow_dispatch:
     inputs:
-      workflow:
-        description: 'Workflow to run locally'
+      trigger_type:
+        description: 'Trigger type for LocalBuilder'
         required: true
-        default: 'build.yml'
-        type: string
-      event:
-        description: 'Event type'
-        required: false
-        default: 'push'
-        type: string
+        default: 'manual'
+        type: choice
+        options:
+        - manual
+        - scheduled
+        - api
 
 jobs:
-  trigger-local:
+  trigger-local-builder:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if authorized
-        id: check-auth
+      - name: Trigger LocalBuilder
         run: |
-          # This will only work if called from the authorized computer
-          # The actual execution happens locally
-          echo "🔒 Checking authorization..."
-          echo "✅ Authorized - triggering local execution"
-          
-      - name: Trigger Local Builder
-        run: |
-          echo "🚀 Triggering local workflow execution..."
-          echo "📋 Workflow: ${{ github.event.inputs.workflow }}"
-          echo "🎯 Event: ${{ github.event.inputs.event }}"
+          echo "🚀 LocalBuilder Trigger Activated"
+          echo "📅 Triggered at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "🔧 Trigger type: ${{ github.event.inputs.trigger_type }}"
           echo ""
-          echo "💡 This workflow triggers the local builder system."
-          echo "🔧 The actual execution happens on your local machine."
-          echo "📱 Check your local Docker container for results."
-          
-      - name: Local Builder Status
-        run: |
-          echo "🏠 Local Builder Status:"
-          echo "   - Container: Running"
-          echo "   - Security: Authorized"
-          echo "   - Status: Ready"
+          echo "📋 This workflow is a dummy trigger for the LocalBuilder system"
+          echo "🔗 The actual LocalBuilder runs on your local machine"
+          echo "💻 Use the START LOCAL BUILDER button in README.md"
           echo ""
-          echo "🎮 Click the LocalBuilder button in README to start!"
+          echo "✅ LocalBuilder trigger completed successfully"

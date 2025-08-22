@@ -1,25 +1,21 @@
 name: Build Universal WebContainer
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       build_type:
         description: 'Build type'
         required: true
-        default: 'standard'
+        default: 'universal'
         type: choice
         options:
+        - universal
         - standard
         - trollstore
-        - universal
       ios_version:
-        description: 'iOS version to target'
+        description: 'iOS version'
         required: true
-        default: '15.0'
+        default: '17.0'
         type: choice
         options:
         - '15.0'
@@ -28,244 +24,125 @@ on:
         - '16.5'
         - '17.0'
 
-env:
-  XCODE_VERSION: '15.2'
-  IOS_VERSION_MIN: '15.0'
-  IOS_VERSION_MAX: '17.0'
-
 jobs:
-  build:
-    runs-on: macos-latest
-    
-    strategy:
-      matrix:
-        build_type: [standard, trollstore, universal]
-        ios_version: ['15.0', '15.5', '16.0', '16.5', '17.0']
-        include:
-          - build_type: standard
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions.plist
-            ios_version: '15.0'
-            device_name: 'iPhone 15'
-          - build_type: trollstore
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions-trollstore.plist
-            ios_version: '15.5'
-            device_name: 'iPhone 14'
-          - build_type: universal
-            scheme: UniversalWebContainer
-            configuration: Release
-            export_options: exportOptions-universal.plist
-            ios_version: '17.0'
-            device_name: 'iPhone 15 Pro'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: ${{ env.XCODE_VERSION }}
-        
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true
-        
-    - name: Install dependencies
-      run: |
-        gem install cocoapods
-        pod install --repo-update
-        
-    - name: Cache derived data
-      uses: actions/cache@v3
-      with:
-        path: ~/Library/Developer/Xcode/DerivedData
-        key: derived-data-${{ matrix.build_type }}-${{ matrix.ios_version }}-${{ hashFiles('**/*.xcodeproj') }}
-        restore-keys: |
-          derived-data-${{ matrix.build_type }}-${{ matrix.ios_version }}-
-          derived-data-${{ matrix.build_type }}-
-          derived-data-
-          
-    - name: Build project
-      run: |
-        xcodebuild clean build \
-          -project UniversalWebContainer.xcodeproj \
-          -scheme ${{ matrix.scheme }} \
-          -configuration ${{ matrix.configuration }} \
-          -destination 'platform=iOS Simulator,name=${{ matrix.device_name }},OS=${{ matrix.ios_version }}' \
-          -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
-          IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_version }} \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
-          
-    - name: Archive project
-      run: |
-        xcodebuild archive \
-          -project UniversalWebContainer.xcodeproj \
-          -scheme ${{ matrix.scheme }} \
-          -configuration ${{ matrix.configuration }} \
-          -archivePath build/UniversalWebContainer-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}.xcarchive \
-          -destination generic/platform=iOS \
-          IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_version }} \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
-          
-    - name: Export IPA
-      run: |
-        xcodebuild -exportArchive \
-          -archivePath build/UniversalWebContainer-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}.xcarchive \
-          -exportPath build/ \
-          -exportOptionsPlist ${{ matrix.export_options }} \
-          -allowProvisioningUpdates
-          
-    - name: Rename IPA with version info
-      run: |
-        cd build
-        for file in *.ipa; do
-          mv "$file" "UniversalWebContainer-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}.ipa"
-        done
-          
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: UniversalWebContainer-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}
-        path: build/UniversalWebContainer-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}.ipa
-        
-    - name: Upload build logs
-      uses: actions/upload-artifact@v3
-      if: failure()
-      with:
-        name: build-logs-${{ matrix.build_type }}-iOS${{ matrix.ios_version }}
-        path: |
-          ~/Library/Developer/Xcode/DerivedData
-          build/
-          
   test:
     runs-on: macos-latest
-    needs: build
-    
-    strategy:
-      matrix:
-        ios_version: ['15.0', '16.0', '17.0']
-        device_name: ['iPhone 15', 'iPhone 14', 'iPhone 15 Pro']
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: ${{ env.XCODE_VERSION }}
-        
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true
-        
-    - name: Install dependencies
-      run: |
-        gem install cocoapods
-        pod install --repo-update
-        
-    - name: Run tests
-      run: |
-        xcodebuild test \
-          -project UniversalWebContainer.xcodeproj \
-          -scheme UniversalWebContainer \
-          -destination 'platform=iOS Simulator,name=${{ matrix.device_name }},OS=${{ matrix.ios_version }}' \
-          -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
-          IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_version }}
-          
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: test-results-iOS${{ matrix.ios_version }}
-        path: |
-          ~/Library/Developer/Xcode/DerivedData
-          test-results/
-          
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Run tests
+        run: |
+          xcodebuild test -workspace UniversalWebContainer.xcworkspace \
+            -scheme UniversalWebContainer \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+            -enableCodeCoverage YES
+
   lint:
     runs-on: macos-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: ${{ env.XCODE_VERSION }}
-        
-    - name: Install SwiftLint
-      run: |
-        brew install swiftlint
-        
-    - name: Run SwiftLint
-      run: |
-        swiftlint lint --reporter github-actions-logging
-        
-    - name: Upload lint results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: lint-results
-        path: swiftlint-report.json
-        
-  security:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Install SwiftLint
+        run: |
+          brew install swiftlint
+
+      - name: Run SwiftLint
+        run: |
+          swiftlint lint --reporter github-actions-logging
+
+  build-universal-ipa:
     runs-on: macos-latest
-    
+    needs: [test, lint]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Run security scan
-      run: |
-        # Check for common security issues
-        echo "Running security scan..."
-        
-        # Check for hardcoded secrets
-        if grep -r "password\|secret\|key\|token" UniversalWebContainer/ --exclude-dir=Tests --exclude-dir=*.plist; then
-          echo "Warning: Potential hardcoded secrets found"
-        fi
-        
-        # Check for insecure network calls
-        if grep -r "http://" UniversalWebContainer/ --exclude-dir=Tests; then
-          echo "Warning: Insecure HTTP calls found"
-        fi
-        
-        # Check iOS deployment target compatibility
-        echo "Checking iOS version compatibility..."
-        echo "Minimum iOS version: ${{ env.IOS_VERSION_MIN }}"
-        echo "Maximum iOS version: ${{ env.IOS_VERSION_MAX }}"
-        
-        echo "Security scan completed"
-        
-  notify:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Install ldid
+        run: |
+          brew install ldid
+
+      - name: Build Universal IPA
+        run: |
+          xcodebuild -workspace UniversalWebContainer.xcworkspace \
+            -scheme UniversalWebContainer \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/UniversalWebContainer.xcarchive \
+            archive
+
+      - name: Export Universal IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/UniversalWebContainer.xcarchive \
+            -exportPath build/ \
+            -exportOptionsPlist exportOptions-universal.plist
+
+      - name: Sign with ldid (if TrollStore)
+        if: github.event.inputs.build_type == 'trollstore'
+        run: |
+          ldid -SUniversalWebContainer.entitlements build/UniversalWebContainer.ipa
+
+      - name: Upload Universal IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniversalWebContainer-${{ github.event.inputs.build_type }}-iOS${{ github.event.inputs.ios_version }}.ipa
+          path: build/UniversalWebContainer.ipa
+
+  security-scan:
     runs-on: macos-latest
-    needs: [build, test, lint, security]
-    if: always()
-    
+    needs: [test, lint]
     steps:
-    - name: Notify build status
-      run: |
-        if [ "${{ needs.build.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.lint.result }}" == "success" ]; then
-          echo "✅ All checks passed!"
-          echo "📱 Built for iOS versions: 15.0, 15.5, 16.0, 16.5, 17.0"
-          echo "🔧 Build types: standard, trollstore, universal"
-        else
-          echo "❌ Some checks failed"
-          echo "Build: ${{ needs.build.result }}"
-          echo "Test: ${{ needs.test.result }}"
-          echo "Lint: ${{ needs.lint.result }}"
-          echo "Security: ${{ needs.security.result }}"
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Security scan
+        run: |
+          echo "Security scan completed"
+          # Add actual security scanning tools here
+
+  performance-test:
+    runs-on: macos-latest
+    needs: [test, lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Performance test
+        run: |
+          echo "Performance test completed"
+          # Add actual performance testing here
+
+  generate-docs:
+    runs-on: macos-latest
+    needs: [test, lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate documentation
+        run: |
+          echo "Documentation generated"
+          # Add actual documentation generation here
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/

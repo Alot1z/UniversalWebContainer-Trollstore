@@ -90,6 +90,31 @@ Baseret på DeepWiki research af **roothide/Bootstrap** og **TrollStore**
   - [ ] `.tweakenabled` flag management
   - [ ] Global tweak toggling
 
+#### **NEW: System Maintenance Functions (BASERET PÅ DEEPWIKI)**
+- [ ] **respringAction()** - Restart SpringBoard
+- [ ] **rebuildappsAction()** - Rebuild app registrations
+- [ ] **rebuildIconCacheAction()** - Clean and rebuild icon cache
+- [ ] **reinstallPackageManager()** - Reinstall Sileo and Zebra
+- [ ] **resetMobilePassword()** - Change mobile user password
+
+#### **NEW: Advanced Tweak Management (BASERET PÅ DEEPWIKI)**
+- [ ] **URLSchemesAction()** - Toggle URL scheme handling
+- [ ] **hideAllCTBugApps()** - Hide jailbreak apps
+- [ ] **unhideAllCTBugApps()** - Restore jailbreak apps
+
+#### **NEW: OpenSSH Service Management (BASERET PÅ DEEPWIKI)**
+- [ ] **opensshAction()** - Control OpenSSH service
+- [ ] **OpenSSH package detection**
+- [ ] **SSH service start/stop**
+
+#### **NEW: Command Line Interface (BASERET PÅ DEEPWIKI)**
+- [ ] **bootstrap** - Initiate bootstrapping
+- [ ] **unbootstrap** - Remove bootstrap
+- [ ] **enableapp <bundlePath>** - Enable tweaks for app
+- [ ] **disableapp <bundlePath>** - Disable tweaks for app
+- [ ] **rebuildiconcache** - Rebuild icon cache
+- [ ] **reboot** - Reboot device
+
 ### **2. TrollStore Enhanced Integration (BASERET PÅ DEEPWIKI)**
 
 #### **Entitlement Management**
@@ -132,6 +157,22 @@ Baseret på DeepWiki research af **roothide/Bootstrap** og **TrollStore**
   - [ ] Persistence helper installation
   - [ ] System app state management
   - [ ] App registration as 'System'
+
+#### **NEW: Utilities in Settings (BASERET PÅ DEEPWIKI)**
+- [ ] **Respring** - Restart SpringBoard
+- [ ] **Refresh App Registrations** - Fix lost system registrations
+- [ ] **Rebuild Icon Cache** - Rebuild icon cache
+- [ ] **Transfer Apps** - Transfer inactive apps
+
+#### **NEW: Advanced Installation Methods (BASERET PÅ DEEPWIKI)**
+- [ ] **Installation Methods** - "installd" and "Custom"
+- [ ] **Uninstallation Methods** - "installd" and "Custom"
+- [ ] **Developer Mode** - Enable developer mode on iOS 16+
+
+#### **NEW: ldid Integration (BASERET PÅ DEEPWIKI)**
+- [ ] **ldid detection** - Check if ldid is installed
+- [ ] **ldid update** - Update ldid tool
+- [ ] **Unsigned IPA support** - Install unsigned IPA files
 
 ### **3. Advanced Features**
 
@@ -187,6 +228,26 @@ Baseret på DeepWiki research af **roothide/Bootstrap** og **TrollStore**
   - [ ] Entitlement management
   - [ ] App installation interface
   - [ ] JIT enablement controls
+
+#### **NEW: System Maintenance UI (BASERET PÅ DEEPWIKI)**
+- [ ] **System Maintenance Panel**
+  - [ ] Respring button
+  - [ ] Rebuild apps button
+  - [ ] Rebuild icon cache button
+  - [ ] Reset password interface
+
+#### **NEW: Advanced Tweak UI (BASERET PÅ DEEPWIKI)**
+- [ ] **Tweak Management Panel**
+  - [ ] Global tweak toggle
+  - [ ] URL scheme toggle
+  - [ ] App hiding controls
+  - [ ] Per-app tweak settings
+
+#### **NEW: OpenSSH Management UI (BASERET PÅ DEEPWIKI)**
+- [ ] **SSH Management Panel**
+  - [ ] SSH service toggle
+  - [ ] SSH status display
+  - [ ] SSH configuration
 
 ### **5. Build and Deployment**
 
@@ -259,12 +320,12 @@ Baseret på DeepWiki research af **roothide/Bootstrap** og **TrollStore**
 
 ## 📊 **IMPLEMENTATION STATUS**
 
-- **Total Components**: 45
-- **Implemented**: 15 (33%)
-- **Missing**: 30 (67%)
-- **Priority 1**: 12 components
-- **Priority 2**: 10 components
-- **Priority 3**: 8 components
+- **Total Components**: 67 (UPDATED)
+- **Implemented**: 15 (22%)
+- **Missing**: 52 (78%)
+- **Priority 1**: 18 components
+- **Priority 2**: 15 components
+- **Priority 3**: 19 components
 
 ## 🚀 **NEXT STEPS**
 
