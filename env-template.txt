@@ -1,0 +1,4 @@
+USER_IP=127.0.0.1
+GITHUB_TOKEN=your_github_token_here
+SECRET_KEY=your_secret_key_here
+ENV_KEY=a5b28201fdca35b66c431f107b157f83fdc83edd2ff65b85101bf592d4eabbc0

@@ -1,120 +1,366 @@
-name: Build Universal WebContainer
+name: Build and Release Universal WebContainer
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build type'
-        required: true
-        default: 'universal'
-        type: choice
-        options:
-        - universal
-        - trollstore
-        - standard
+  release:
+    types: [ published ]
+
+env:
+  XCODE_VERSION: '15.2'
+  IOS_VERSION: '17.0'
 
 jobs:
-  detect-environment:
-    runs-on: ubuntu-latest
-    outputs:
-      build-type: ${{ steps.detect.outputs.build-type }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Detect Build Type
-        id: detect
-        run: |
-          if [ "${{ github.event.inputs.build_type }}" != "" ]; then
-            echo "build-type=${{ github.event.inputs.build_type }}" >> $GITHUB_OUTPUT
-          else
-            echo "build-type=universal" >> $GITHUB_OUTPUT
-          fi
-
-  build-universal:
-    needs: detect-environment
+  # Test and Lint
+  test:
+    name: Test and Lint
     runs-on: macos-latest
-    strategy:
-      matrix:
-        xcode: ['15.2']
+    
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: ${{ matrix.xcode }}
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Install SwiftLint
+      run: |
+        brew install swiftlint
+        
+    - name: Run SwiftLint
+      run: |
+        swiftlint lint --reporter github-actions-logging
+        
+    - name: Run Tests
+      run: |
+        xcodebuild test \
+          -project UniversalWebContainer.xcodeproj \
+          -scheme UniversalWebContainer \
+          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          -enableCodeCoverage YES \
+          | xcpretty
+
+  # Build Normal IPA
+  build-normal-ipa:
+    name: Build Normal IPA
+    runs-on: macos-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-      - name: Cache Xcode
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-xcode-${{ matrix.xcode }}-${{ hashFiles('**/*.xcodeproj') }}
-          restore-keys: |
-            ${{ runner.os }}-xcode-${{ matrix.xcode }}-
-      
-      - name: Build Universal IPA
-        run: |
-          echo "🚀 Building Universal WebContainer IPA..."
-          echo "📱 Build Type: ${{ needs.detect-environment.outputs.build-type }}"
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Build Normal IPA
+      run: |
+        xcodebuild archive \
+          -project UniversalWebContainer.xcodeproj \
+          -scheme UniversalWebContainer \
+          -archivePath build/UniversalWebContainer.xcarchive \
+          -destination generic/platform=iOS \
+          -allowProvisioningUpdates \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
           
-          # Build archive
-          xcodebuild -project UniversalWebContainer.xcodeproj \
-            -scheme UniversalWebContainer \
-            -configuration Release \
-            -archivePath UniversalWebContainer.xcarchive \
-            archive
+    - name: Export Normal IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath build/UniversalWebContainer.xcarchive \
+          -exportPath build/ \
+          -exportOptionsPlist .github/exportOptions-normal.plist
           
-          # Export with universal options
-          xcodebuild -exportArchive \
-            -archivePath UniversalWebContainer.xcarchive \
-            -exportPath ./builds \
-            -exportOptionsPlist exportOptions-universal.plist
+    - name: Upload Normal IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: UniversalWebContainer-Normal
+        path: build/UniversalWebContainer.ipa
+
+  # Build TrollStore IPA
+  build-trollstore-ipa:
+    name: Build TrollStore IPA
+    runs-on: macos-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Install ldid
+      run: |
+        brew install ldid
+        
+    - name: Build TrollStore IPA
+      run: |
+        xcodebuild archive \
+          -project UniversalWebContainer.xcodeproj \
+          -scheme UniversalWebContainer-TrollStore \
+          -archivePath build/UniversalWebContainer-TrollStore.xcarchive \
+          -destination generic/platform=iOS \
+          -allowProvisioningUpdates \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
           
-          echo "✅ Build completed successfully!"
+    - name: Export TrollStore IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath build/UniversalWebContainer-TrollStore.xcarchive \
+          -exportPath build/ \
+          -exportOptionsPlist .github/exportOptions-trollstore.plist
+          
+    - name: Sign with ldid
+      run: |
+        ldid -SUniversalWebContainer-TrollStore.entitlements build/UniversalWebContainer-TrollStore.ipa
+        
+    - name: Upload TrollStore IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: UniversalWebContainer-TrollStore
+        path: build/UniversalWebContainer-TrollStore.ipa
+
+  # Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: macos-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: UniversalWebContainer-${{ needs.detect-environment.outputs.build-type }}-${{ github.run_number }}
-          path: ./builds/*.ipa
-          retention-days: 30
+    - name: Install security tools
+      run: |
+        brew install swiftlint
+        brew install oclint
+        
+    - name: Run security analysis
+      run: |
+        swiftlint lint --reporter json > swiftlint-report.json
+        
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: swiftlint-report.json
+
+  # Create Release
+  create-release:
+    name: Create Release
+    runs-on: macos-latest
+    needs: [build-normal-ipa, build-trollstore-ipa, security-scan]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-      - name: Create Release
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ./builds/*.ipa
-          tag_name: v${{ github.run_number }}
-          name: Universal WebContainer v${{ github.run_number }}
-          body: |
-            🚀 Universal WebContainer v${{ github.run_number }}
-            
-            ## 🔧 Build Type: ${{ needs.detect-environment.outputs.build-type }}
-            
-            ### 📱 Features:
-            - ✅ Universal IPA (Works on all devices)
-            - ✅ Automatic environment detection
-            - ✅ TrollStore compatibility
-            - ✅ Jailbreak detection (roothide/Nathan)
-            - ✅ Smart feature activation
-            
-            ### 🎯 Installation:
-            1. Download the IPA file
-            2. Install via your preferred method:
-               - **Standard**: AltStore, Sideloadly, 3uTools
-               - **TrollStore**: Direct installation
-               - **Jailbreak**: Direct installation
-            
-            ### 🔍 Environment Detection:
-            The app automatically detects your environment and activates appropriate features:
-            - **Standard iOS**: Basic features
-            - **TrollStore**: Advanced features + browser import
-            - **Jailbreak**: All features + system integration
-            
-            ---
-            *Built with ❤️ using GitHub Actions*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Download Normal IPA
+      uses: actions/download-artifact@v4
+      with:
+        name: UniversalWebContainer-Normal
+        path: artifacts/
+        
+    - name: Download TrollStore IPA
+      uses: actions/download-artifact@v4
+      with:
+        name: UniversalWebContainer-TrollStore
+        path: artifacts/
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/UniversalWebContainer.ipa
+          artifacts/UniversalWebContainer-TrollStore.ipa
+        body: |
+          # Universal WebContainer v${{ github.event.release.tag_name }}
+          
+          ## Progressive Enhancement Features
+          
+          This release includes two IPAs with different capability levels:
+          
+          ### UniversalWebContainer.ipa (Normal)
+          - **Distribution**: AltStore, Sideloadly, Xcode
+          - **Capabilities**: Basic WebKit features
+          - **Features**: Webapp management, standard session persistence
+          - **Feature Level**: 1
+          
+          ### UniversalWebContainer-TrollStore.ipa (Enhanced)
+          - **Distribution**: TrollStore with arbitrary entitlements
+          - **Capabilities**: Unsandboxed access, filesystem integration
+          - **Features**: Browser import, enhanced persistence, system integration
+          - **Feature Level**: 2
+          
+          ## Installation Instructions
+          
+          ### Normal Installation
+          1. Download `UniversalWebContainer.ipa`
+          2. Install via AltStore, Sideloadly, or Xcode
+          3. Trust the developer certificate in Settings
+          
+          ### TrollStore Installation
+          1. Download `UniversalWebContainer-TrollStore.ipa`
+          2. Install via TrollStore
+          3. Grant necessary permissions when prompted
+          
+          ## What's New
+          
+          - Progressive capability detection
+          - Enhanced session persistence
+          - TrollStore integration
+          - Browser data import (TrollStore only)
+          - SpringBoard integration (TrollStore only)
+          
+          ## System Requirements
+          
+          - iOS 15.0 or later
+          - 100MB available storage
+          - Internet connection for web apps
+          
+          ## Support
+          
+          For support and feature requests, please visit our GitHub repository.
+          
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Deploy to TestFlight (Optional)
+  deploy-testflight:
+    name: Deploy to TestFlight
+    runs-on: macos-latest
+    needs: [build-normal-ipa, build-trollstore-ipa]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Download Normal IPA
+      uses: actions/download-artifact@v4
+      with:
+        name: UniversalWebContainer-Normal
+        path: artifacts/
+        
+    - name: Deploy to TestFlight
+      run: |
+        xcrun altool --upload-app \
+          --type ios \
+          --file artifacts/UniversalWebContainer.ipa \
+          --username ${{ secrets.APPLE_ID }} \
+          --password ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+
+  # Performance Testing
+  performance-test:
+    name: Performance Test
+    runs-on: macos-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run Performance Tests
+      run: |
+        xcodebuild test \
+          -project UniversalWebContainer.xcodeproj \
+          -scheme UniversalWebContainer \
+          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          -only-testing:PerformanceTests \
+          | xcpretty
+        
+    - name: Generate Performance Report
+      run: |
+        xcrun simctl spawn booted log show --predicate 'process == "UniversalWebContainer"' --last 1h > performance.log
+        
+    - name: Upload Performance Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: performance.log
+
+  # Documentation Generation
+  generate-docs:
+    name: Generate Documentation
+    runs-on: macos-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Generate Documentation
+      run: |
+        xcodebuild docbuild \
+          -project UniversalWebContainer.xcodeproj \
+          -scheme UniversalWebContainer \
+          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest'
+          
+    - name: Archive Documentation
+      run: |
+        xcrun docc process-archive \
+          UniversalWebContainer.xcodeproj/build/Debug-iphonesimulator/UniversalWebContainer.doccarchive \
+          --output-path docs/
+          
+    - name: Upload Documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: docs/
+
+  # Notify on Completion
+  notify:
+    name: Notify Completion
+    runs-on: macos-latest
+    needs: [build-normal-ipa, build-trollstore-ipa, security-scan, performance-test, generate-docs]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: success()
+      run: |
+        echo "✅ All builds completed successfully!"
+        echo "📱 Normal IPA: UniversalWebContainer.ipa"
+        echo "🔧 TrollStore IPA: UniversalWebContainer-TrollStore.ipa"
+        echo "🔒 Security scan completed"
+        echo "⚡ Performance tests passed"
+        echo "📚 Documentation generated"
+        
+    - name: Notify Failure
+      if: failure()
+      run: |
+        echo "❌ Build failed!"
+        echo "Please check the logs for details."

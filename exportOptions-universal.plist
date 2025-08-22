@@ -4,61 +4,33 @@
 <dict>
     <key>method</key>
     <string>development</string>
-    <key>teamID</key>
-    <string>YOUR_TEAM_ID</string>
-    <key>signingStyle</key>
-    <string>automatic</string>
+    <key>compileBitcode</key>
+    <false/>
     <key>stripSwiftSymbols</key>
     <true/>
     <key>uploadBitcode</key>
     <false/>
     <key>uploadSymbols</key>
     <false/>
-    <key>compileBitcode</key>
-    <false/>
-    <key>embedOnDemandResourcesAssetPacksInBundle</key>
-    <false/>
-    <key>thinning</key>
-    <string>&lt;none&gt;</string>
-    <key>distributionBundleIdentifier</key>
-    <string>com.universalwebcontainer.app</string>
+    <key>signingStyle</key>
+    <string>manual</string>
     <key>provisioningProfiles</key>
     <dict>
-        <key>com.universalwebcontainer.app</key>
-        <string>UniversalWebContainer_Universal</string>
+        <key>com.yourcompany.UniversalWebContainer</key>
+        <string>Universal WebContainer Development</string>
     </dict>
-    <key>entitlements</key>
+    <key>signingCertificate</key>
+    <string>Apple Development</string>
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+    <key>distributionBundleIdentifier</key>
+    <string>com.yourcompany.UniversalWebContainer</string>
+    <key>distributionCertificate</key>
+    <string>Apple Distribution</string>
+    <key>provisioningProfiles</key>
     <dict>
-        <!-- Standard entitlements -->
-        <key>com.apple.developer.team-identifier</key>
-        <string>YOUR_TEAM_ID</string>
-        
-        <!-- TrollStore entitlements -->
-        <key>com.apple.private.security.no-sandbox</key>
-        <true/>
-        <key>platform-application</key>
-        <true/>
-        <key>com.apple.private.persona-mgmt</key>
-        <true/>
-        <key>com.apple.springboard.launchapplications</key>
-        <true/>
-        
-        <!-- Jailbreak entitlements -->
-        <key>com.apple.private.tcc.allow</key>
-        <array>
-            <string>kTCCServiceSystemPolicyAllFiles</string>
-            <string>kTCCServiceSystemPolicySysAdminFiles</string>
-        </array>
-        <key>com.apple.private.security.container-required</key>
-        <false/>
-        <key>com.apple.security.cs.allow-jit</key>
-        <true/>
-        <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-        <true/>
-        <key>com.apple.security.cs.disable-library-validation</key>
-        <true/>
-        <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-        <true/>
+        <key>com.yourcompany.UniversalWebContainer</key>
+        <string>Universal WebContainer Distribution</string>
     </dict>
 </dict>
 </plist>

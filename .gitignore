@@ -1,5 +1,4 @@
-# Environment variables
-.env
+# Environment variables (keep template)
 .env.local
 .env.*.local
 
@@ -62,3 +61,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Large executable files
+*.exe
