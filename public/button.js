@@ -157,6 +157,9 @@ class SmartLocalBuilder {
             return;
         }
 
+        // Open local builder in new tab
+        window.open('http://localhost:3000', '_blank');
+
         this.updateButtonStatus('running');
         this.updateStatusBadge('running');
 

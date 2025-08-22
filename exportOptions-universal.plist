@@ -4,33 +4,37 @@
 <dict>
     <key>method</key>
     <string>development</string>
-    <key>compileBitcode</key>
-    <false/>
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
     <key>stripSwiftSymbols</key>
     <true/>
     <key>uploadBitcode</key>
     <false/>
     <key>uploadSymbols</key>
     <false/>
-    <key>signingStyle</key>
-    <string>manual</string>
+    <key>compileBitcode</key>
+    <false/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
     <key>provisioningProfiles</key>
     <dict>
-        <key>com.yourcompany.UniversalWebContainer</key>
-        <string>Universal WebContainer Development</string>
+        <key>com.universalwebcontainer.app</key>
+        <string>UniversalWebContainer_Universal</string>
     </dict>
-    <key>signingCertificate</key>
-    <string>Apple Development</string>
-    <key>teamID</key>
-    <string>YOUR_TEAM_ID</string>
-    <key>distributionBundleIdentifier</key>
-    <string>com.yourcompany.UniversalWebContainer</string>
-    <key>distributionCertificate</key>
-    <string>Apple Distribution</string>
-    <key>provisioningProfiles</key>
+    <key>entitlements</key>
     <dict>
-        <key>com.yourcompany.UniversalWebContainer</key>
-        <string>Universal WebContainer Distribution</string>
+        <key>com.apple.security.application-groups</key>
+        <array>
+            <string>group.com.universalwebcontainer.app</string>
+        </array>
+        <key>com.apple.security.network.client</key>
+        <true/>
+        <key>com.apple.security.network.server</key>
+        <true/>
     </dict>
+    <key>embedOnDemandResourcesAssetPacksInBundle</key>
+    <false/>
 </dict>
 </plist>

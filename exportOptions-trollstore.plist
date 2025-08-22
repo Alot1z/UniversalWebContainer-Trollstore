@@ -14,14 +14,27 @@
     <false/>
     <key>uploadSymbols</key>
     <false/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
     <key>provisioningProfiles</key>
     <dict>
         <key>com.universalwebcontainer.app</key>
         <string>UniversalWebContainer_TrollStore</string>
     </dict>
-    <key>compileBitcode</key>
-    <false/>
-    <key>embedOnDemandResourcesAssetPacksInBundle</key>
-    <false/>
+    <key>entitlements</key>
+    <dict>
+        <key>com.apple.security.application-groups</key>
+        <array>
+            <string>group.com.universalwebcontainer.app</string>
+        </array>
+        <key>com.apple.security.files.user-selected.read-write</key>
+        <true/>
+        <key>com.apple.security.network.client</key>
+        <true/>
+        <key>com.apple.security.network.server</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

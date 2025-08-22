@@ -350,13 +350,13 @@ struct SettingsView: View {
     }
     
     private func openSourceCode() {
-        if let url = URL(string: "https://github.com/yourusername/UniversalWebContainer") {
+        if let url = URL(string: "https://github.com/Alot1z/UniversalWebContainer") {
             UIApplication.shared.open(url)
         }
     }
     
     private func reportIssue() {
-        if let url = URL(string: "https://github.com/yourusername/UniversalWebContainer/issues") {
+        if let url = URL(string: "https://github.com/Alot1z/UniversalWebContainer/issues") {
             UIApplication.shared.open(url)
         }
     }
