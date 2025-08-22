@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SQLite3
 
 class BrowserImportService: ObservableObject {
     static let shared = BrowserImportService()
@@ -102,15 +103,52 @@ class BrowserImportService: ObservableObject {
     // MARK: - Parsing Methods
     
     private func parseSafariBookmarks(at path: String) throws -> [BrowserBookmark] {
-        // Real implementation to parse Safari Bookmarks.db
-        // This would use SQLite to read the bookmarks database
-        let bookmarks: [BrowserBookmark] = []
+        var bookmarks: [BrowserBookmark] = []
         
-        // Implementation would include:
-        // 1. Open SQLite database
-        // 2. Query bookmarks table
-        // 3. Parse bookmark entries
-        // 4. Extract title, URL, date added
+        // Open SQLite database
+        guard let db = try? SQLiteDatabase(path: path) else {
+            throw BrowserImportError.parsingError("Failed to open Safari bookmarks database")
+        }
+        
+        // Query bookmarks table
+        let query = """
+            SELECT 
+                b.title,
+                b.url,
+                b.date_added,
+                f.title as folder_name
+            FROM bookmarks b
+            LEFT JOIN bookmarks f ON b.parent = f.id
+            WHERE b.url IS NOT NULL AND b.url != ''
+            ORDER BY b.date_added DESC
+        """
+        
+        do {
+            let results = try db.executeQuery(query)
+            
+            for row in results {
+                if let title = row["title"] as? String,
+                   let urlString = row["url"] as? String,
+                   let url = URL(string: urlString),
+                   let dateAdded = row["date_added"] as? Double {
+                    
+                    let folderName = row["folder_name"] as? String
+                    let date = Date(timeIntervalSince1970: dateAdded)
+                    
+                    let bookmark = BrowserBookmark(
+                        title: title,
+                        url: url,
+                        dateAdded: date,
+                        source: .safari,
+                        folder: folderName
+                    )
+                    
+                    bookmarks.append(bookmark)
+                }
+            }
+        } catch {
+            throw BrowserImportError.parsingError("Failed to parse Safari bookmarks: \(error.localizedDescription)")
+        }
         
         return bookmarks
     }

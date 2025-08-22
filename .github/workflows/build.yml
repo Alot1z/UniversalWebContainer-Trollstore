@@ -25,11 +25,68 @@ on:
         - '17.0'
 
 jobs:
-  test:
-    runs-on: macos-latest
+  setup-resources:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup permanent resource cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/
+            ~/.cache/theos
+            ~/.cache/ldid
+            ~/.cache/xcode
+          key: permanent-resources-${{ hashFiles('resources/**') }}
+          restore-keys: |
+            permanent-resources-
+
+      - name: Download Nathan resources (if not cached)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p resources/nathanlr
+          git clone --depth 1 https://github.com/verygenericname/nathanlr.git temp_nathan
+          cp -r temp_nathan/bins/* resources/nathanlr/ || true
+          cp -r temp_nathan/macbins/* resources/nathanlr/ || true
+          rm -rf temp_nathan
+
+      - name: Download roothide resources (if not cached)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p resources/roothide
+          git clone --depth 1 https://github.com/roothide/Bootstrap.git temp_roothide
+          cp -r temp_roothide/basebin/* resources/roothide/ || true
+          cp -r temp_roothide/strapfiles/* resources/roothide/ || true
+          rm -rf temp_roothide
+
+      - name: Download TrollStore resources (if not cached)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p resources/trollstore
+          git clone --depth 1 https://github.com/opa334/TrollStore.git temp_trollstore
+          cp -r temp_trollstore/Shared/* resources/trollstore/ || true
+          rm -rf temp_trollstore
+
+      - name: Upload resources to cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
+
+  test:
+    runs-on: macos-latest
+    needs: setup-resources
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -45,9 +102,16 @@ jobs:
 
   lint:
     runs-on: macos-latest
+    needs: setup-resources
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -64,10 +128,16 @@ jobs:
 
   build-universal-ipa:
     runs-on: macos-latest
-    needs: [test, lint]
+    needs: [setup-resources, test, lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -107,10 +177,16 @@ jobs:
 
   security-scan:
     runs-on: macos-latest
-    needs: [test, lint]
+    needs: [setup-resources, test, lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Security scan
         run: |
@@ -119,10 +195,16 @@ jobs:
 
   performance-test:
     runs-on: macos-latest
-    needs: [test, lint]
+    needs: [setup-resources, test, lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Performance test
         run: |
@@ -131,10 +213,16 @@ jobs:
 
   generate-docs:
     runs-on: macos-latest
-    needs: [test, lint]
+    needs: [setup-resources, test, lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Restore resources from cache
+        uses: actions/cache@v4
+        with:
+          path: resources/
+          key: permanent-resources-${{ hashFiles('resources/**') }}
 
       - name: Generate documentation
         run: |
