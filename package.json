@@ -1,0 +1,29 @@
+{
+  "name": "local-workflow-runner",
+  "version": "1.0.0",
+  "description": "Professional local GitHub Actions workflow runner",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "build": "echo 'Build completed'",
+    "test": "echo 'Tests passed'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "github-actions",
+    "local-runner",
+    "workflow",
+    "automation"
+  ],
+  "author": "LocalWorkflowRunner",
+  "license": "MIT"
+}

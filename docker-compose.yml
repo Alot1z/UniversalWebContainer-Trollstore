@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  local-workflow-runner:
+    build: .
+    container_name: local-workflow-runner
+    volumes:
+      - ./workflows:/workspace/workflows
+      - ./output:/workspace/output
+      - ./.github:/workspace/.github
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - USER_IP=${USER_IP}
+    ports:
+      - "3000:3000"
+    restart: "no"
+    command: ["sh", "-c", "npm start && docker stop local-workflow-runner"]
