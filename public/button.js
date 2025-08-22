@@ -131,6 +131,10 @@ class SmartLocalBuilder {
                 statusBadge.innerHTML = '<span class="status-icon">⚡</span> RUNNING';
                 statusBadge.className = 'status-badge status-running';
                 break;
+            case 'error':
+                statusBadge.innerHTML = '<span class="status-icon">❌</span> ERROR';
+                statusBadge.className = 'status-badge status-error';
+                break;
         }
     }
 
@@ -157,9 +161,6 @@ class SmartLocalBuilder {
             return;
         }
 
-        // Open local builder in new tab
-        window.open('http://localhost:3000', '_blank');
-
         this.updateButtonStatus('running');
         this.updateStatusBadge('running');
 
@@ -181,19 +182,27 @@ class SmartLocalBuilder {
             if (response.ok) {
                 const result = await response.json();
                 this.showSuccess(result);
+                
+                // Update status to show build is running
+                this.updateStatusBadge('running');
+                setTimeout(() => {
+                    this.updateStatusBadge('authorized');
+                    this.updateButtonStatus('ready');
+                }, 5000); // Reset after 5 seconds
             } else {
                 const error = await response.json();
                 this.showError(error);
+                this.updateStatusBadge('error');
+                this.updateButtonStatus('ready');
             }
         } catch (error) {
             this.showError({ 
                 error: 'Network error', 
                 details: 'Cannot connect to local builder service. Please ensure the service is running.' 
             });
+            this.updateStatusBadge('offline');
+            this.updateButtonStatus('ready');
         }
-
-        this.updateButtonStatus('ready');
-        this.updateStatusBadge('authorized');
     }
 
     showSuccess(result) {
@@ -210,8 +219,9 @@ class SmartLocalBuilder {
                     <li>⚡ GitHub Actions workflow running locally</li>
                     <li>🔧 No GitHub credits consumed</li>
                     <li>🚀 Faster than cloud builds</li>
+                    <li>📊 Status updated in real-time</li>
                 </ul>
-                <p><em>Check your local terminal for build progress...</em></p>
+                <p><em>Status badge will show RUNNING for 5 seconds, then return to AUTHORIZED</em></p>
             </div>
         `);
         document.body.appendChild(modal);
@@ -346,6 +356,19 @@ smartStyle.textContent = `
     .status-running {
         background: linear-gradient(135deg, #28a745, #1e7e34);
         color: white;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-badge.status-offline {
+        background: linear-gradient(135deg, #6c757d, #5a6268);
+        color: white;
+        border: 1px solid #6c757d;
+    }
+    
+    .status-badge.status-error {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border: 1px solid #dc3545;
         animation: pulse 2s infinite;
     }
     
