@@ -1,0 +1,116 @@
+name: Build Universal WebContainer
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for resources
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.0'
+
+    - name: Verify Resources
+      run: |
+        echo "🔍 Verifying local resources..."
+        
+        # Check if resources exist
+        if [ ! -d "UniversalWebContainer/Resources" ]; then
+          echo "❌ Resources directory not found!"
+          exit 1
+        fi
+        
+        # Check resource manifest
+        if [ -f "UniversalWebContainer/Resources/manifest.json" ]; then
+          echo "✅ Resource manifest found"
+          cat UniversalWebContainer/Resources/manifest.json
+        else
+          echo "⚠️ Resource manifest not found"
+        fi
+        
+        # List available resources
+        echo "📁 Available resources:"
+        ls -la UniversalWebContainer/Resources/
+        echo ""
+        echo "📦 Nathan jailbreak resources:"
+        ls -la UniversalWebContainer/Resources/bins/nathanlr/ 2>/dev/null || echo "Not found"
+        echo ""
+        echo "🔓 roothide Bootstrap resources:"
+        ls -la UniversalWebContainer/Resources/bins/roothide/ 2>/dev/null || echo "Not found"
+        echo ""
+        echo "⚡ TrollStore resources:"
+        ls -la UniversalWebContainer/Resources/bins/trollstore/ 2>/dev/null || echo "Not found"
+
+    - name: Setup Build Environment
+      run: |
+        echo "🔧 Setting up build environment..."
+        
+        # Set up Theos environment
+        export THEOS=./UniversalWebContainer/Resources/macbins/theos
+        export ROOTHIDE_THEOS=./UniversalWebContainer/Resources/macbins/roothide-theos
+        
+        # Make build scripts executable
+        chmod +x UniversalWebContainer/Resources/scripts/*.sh
+        
+        # Set up environment variables
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "ROOTHIDE_THEOS=$ROOTHIDE_THEOS" >> $GITHUB_ENV
+        
+        echo "✅ Build environment configured"
+
+    - name: Build Universal IPA
+      run: |
+        echo "🔨 Building Universal WebContainer IPA..."
+        
+        # Use local build script
+        cd UniversalWebContainer/Resources/scripts
+        ./build.sh
+        
+        echo "✅ Universal IPA built successfully!"
+        echo "📱 IPA will automatically detect environment:"
+        echo "   • Standard: Normal sideloading"
+        echo "   • TrollStore: Enhanced capabilities"
+        echo "   • Jailbreak: Full features (roothide/Nathan)"
+
+    - name: Package IPA
+      run: |
+        echo "📦 Packaging Universal WebContainer..."
+        
+        # Use local package script
+        cd UniversalWebContainer/Resources/scripts
+        ./package.sh
+        
+        echo "✅ IPA packaged successfully!"
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: UniversalWebContainer-IPA
+        path: |
+          UniversalWebContainer/Resources/scripts/build/*.ipa
+          UniversalWebContainer/Resources/manifest.json
+        retention-days: 30
+
+    - name: Build Status
+      run: |
+        echo "🎯 Build completed successfully!"
+        echo "📦 Universal IPA created with smart environment detection"
+        echo "🔧 Features will be automatically enabled based on installation method"
+        echo "📁 All resources included locally - no external downloads needed"
+        
+        # Show resource statistics
+        if [ -f "UniversalWebContainer/Resources/manifest.json" ]; then
+          echo ""
+          echo "📊 Resource Statistics:"
+          cat UniversalWebContainer/Resources/manifest.json | jq -r '.resources | to_entries[] | "  \(.key): \(.value.files // .value.bins // 0) files"'
+        fi

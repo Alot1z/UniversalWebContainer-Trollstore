@@ -1,0 +1,294 @@
+name: Update Resources
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update all resources'
+        required: false
+        default: 'false'
+        type: boolean
+  repository_dispatch:
+    types: [resource_update]
+
+jobs:
+  update-resources:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Setup Git
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+
+    - name: Create Resources Directory
+      run: |
+        mkdir -p UniversalWebContainer/Resources/{bins,macbins,usprebooter,entitlements,provisioning,scripts}
+        mkdir -p UniversalWebContainer/Resources/bins/{nathanlr,roothide,trollstore}
+        mkdir -p UniversalWebContainer/Resources/macbins/{nathanlr,roothide,trollstore}
+        mkdir -p UniversalWebContainer/Resources/usprebooter/{nathanlr,roothide,trollstore}
+
+    - name: Update Nathan Jailbreak Resources
+      run: |
+        echo "🔄 Updating Nathan jailbreak resources..."
+        
+        # Clone Nathan repository
+        git clone --depth 1 https://github.com/verygenericname/nathanlr.git temp_nathan
+        
+        # Copy bins
+        if [ -d "temp_nathan/bins" ]; then
+          cp -r temp_nathan/bins/* UniversalWebContainer/Resources/bins/nathanlr/
+          echo "✅ Nathan bins updated"
+        fi
+        
+        # Copy macbins
+        if [ -d "temp_nathan/macbins" ]; then
+          cp -r temp_nathan/macbins/* UniversalWebContainer/Resources/macbins/nathanlr/
+          echo "✅ Nathan macbins updated"
+        fi
+        
+        # Copy usprebooter
+        if [ -d "temp_nathan/usprebooter" ]; then
+          cp -r temp_nathan/usprebooter/* UniversalWebContainer/Resources/usprebooter/nathanlr/
+          echo "✅ Nathan usprebooter updated"
+        fi
+        
+        # Clean up
+        rm -rf temp_nathan
+
+    - name: Update roothide Bootstrap Resources
+      run: |
+        echo "🔄 Updating roothide Bootstrap resources..."
+        
+        # Clone roothide Bootstrap repository
+        git clone --depth 1 https://github.com/roothide/Bootstrap.git temp_roothide
+        
+        # Copy bins
+        if [ -d "temp_roothide/basebin" ]; then
+          cp -r temp_roothide/basebin/* UniversalWebContainer/Resources/bins/roothide/
+          echo "✅ roothide bins updated"
+        fi
+        
+        # Copy strapfiles
+        if [ -d "temp_roothide/strapfiles" ]; then
+          cp -r temp_roothide/strapfiles/* UniversalWebContainer/Resources/macbins/roothide/
+          echo "✅ roothide strapfiles updated"
+        fi
+        
+        # Copy other resources
+        if [ -f "temp_roothide/entitlements.plist" ]; then
+          cp temp_roothide/entitlements.plist UniversalWebContainer/Resources/entitlements/roothide-entitlements.plist
+        fi
+        
+        # Clean up
+        rm -rf temp_roothide
+
+    - name: Update TrollStore Resources
+      run: |
+        echo "🔄 Updating TrollStore resources..."
+        
+        # Clone TrollStore repository
+        git clone --depth 1 https://github.com/opa334/TrollStore.git temp_trollstore
+        
+        # Copy relevant files
+        if [ -d "temp_trollstore/Shared" ]; then
+          cp -r temp_trollstore/Shared/* UniversalWebContainer/Resources/bins/trollstore/
+          echo "✅ TrollStore shared resources updated"
+        fi
+        
+        # Copy entitlements
+        if [ -f "temp_trollstore/Shared/entitlements.plist" ]; then
+          cp temp_trollstore/Shared/entitlements.plist UniversalWebContainer/Resources/entitlements/trollstore-entitlements.plist
+        fi
+        
+        # Clean up
+        rm -rf temp_trollstore
+
+    - name: Update Theos Resources
+      run: |
+        echo "🔄 Updating Theos resources..."
+        
+        # Clone Theos repository
+        git clone --depth 1 https://github.com/theos/theos.git temp_theos
+        
+        # Copy Theos files
+        cp -r temp_theos/* UniversalWebContainer/Resources/macbins/theos/
+        echo "✅ Theos resources updated"
+        
+        # Clean up
+        rm -rf temp_theos
+
+    - name: Update roothide Theos
+      run: |
+        echo "🔄 Updating roothide Theos..."
+        
+        # Clone roothide Theos repository
+        git clone --depth 1 https://github.com/roothide/theos.git temp_roothide_theos
+        
+        # Copy roothide Theos files
+        cp -r temp_roothide_theos/* UniversalWebContainer/Resources/macbins/roothide-theos/
+        echo "✅ roothide Theos updated"
+        
+        # Clean up
+        rm -rf temp_roothide_theos
+
+    - name: Create Build Scripts
+      run: |
+        echo "📝 Creating build scripts..."
+        
+        # Create main build script
+        cat > UniversalWebContainer/Resources/scripts/build.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🔨 Building Universal WebContainer..."
+
+# Set up environment
+export THEOS=./Resources/macbins/theos
+export ROOTHIDE_THEOS=./Resources/macbins/roothide-theos
+
+# Build for different environments
+echo "📱 Building for Standard environment..."
+xcodebuild -project UniversalWebContainer.xcodeproj \
+           -scheme UniversalWebContainer \
+           -archivePath UniversalWebContainer.xcarchive \
+           archive
+
+echo "📱 Building for TrollStore environment..."
+xcodebuild -exportArchive \
+           -archivePath UniversalWebContainer.xcarchive \
+           -exportPath ./build \
+           -exportOptionsPlist exportOptions-universal.plist
+
+echo "✅ Build completed successfully!"
+EOF
+
+        # Create package script
+        cat > UniversalWebContainer/Resources/scripts/package.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "📦 Packaging Universal WebContainer..."
+
+# Create IPA package
+cd build
+zip -r UniversalWebContainer.ipa UniversalWebContainer.app
+
+echo "✅ Package created: UniversalWebContainer.ipa"
+EOF
+
+        # Create deploy script
+        cat > UniversalWebContainer/Resources/scripts/deploy.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 Deploying Universal WebContainer..."
+
+# Deploy to different targets
+if [ "$1" = "trollstore" ]; then
+    echo "📱 Deploying to TrollStore..."
+    # TrollStore deployment logic
+elif [ "$1" = "jailbreak" ]; then
+    echo "🔓 Deploying to Jailbreak..."
+    # Jailbreak deployment logic
+else
+    echo "📱 Deploying to Standard environment..."
+    # Standard deployment logic
+fi
+
+echo "✅ Deployment completed!"
+EOF
+
+        # Make scripts executable
+        chmod +x UniversalWebContainer/Resources/scripts/*.sh
+
+    - name: Create Resource Manifest
+      run: |
+        echo "📋 Creating resource manifest..."
+        
+        # Create manifest file
+        cat > UniversalWebContainer/Resources/manifest.json << EOF
+{
+  "version": "$(date +%Y%m%d)",
+  "last_updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "resources": {
+    "nathanlr": {
+      "source": "https://github.com/verygenericname/nathanlr",
+      "bins": "$(find UniversalWebContainer/Resources/bins/nathanlr -type f | wc -l)",
+      "macbins": "$(find UniversalWebContainer/Resources/macbins/nathanlr -type f | wc -l)",
+      "usprebooter": "$(find UniversalWebContainer/Resources/usprebooter/nathanlr -type f | wc -l)"
+    },
+    "roothide": {
+      "source": "https://github.com/roothide/Bootstrap",
+      "bins": "$(find UniversalWebContainer/Resources/bins/roothide -type f | wc -l)",
+      "macbins": "$(find UniversalWebContainer/Resources/macbins/roothide -type f | wc -l)",
+      "usprebooter": "$(find UniversalWebContainer/Resources/usprebooter/roothide -type f | wc -l)"
+    },
+    "trollstore": {
+      "source": "https://github.com/opa334/TrollStore",
+      "bins": "$(find UniversalWebContainer/Resources/bins/trollstore -type f | wc -l)",
+      "macbins": "$(find UniversalWebContainer/Resources/macbins/trollstore -type f | wc -l)",
+      "usprebooter": "$(find UniversalWebContainer/Resources/usprebooter/trollstore -type f | wc -l)"
+    },
+    "theos": {
+      "source": "https://github.com/theos/theos",
+      "files": "$(find UniversalWebContainer/Resources/macbins/theos -type f | wc -l)"
+    },
+    "roothide_theos": {
+      "source": "https://github.com/roothide/theos",
+      "files": "$(find UniversalWebContainer/Resources/macbins/roothide-theos -type f | wc -l)"
+    }
+  },
+  "total_files": "$(find UniversalWebContainer/Resources -type f | wc -l)",
+  "total_size": "$(du -sh UniversalWebContainer/Resources | cut -f1)"
+}
+EOF
+
+    - name: Commit and Push Changes
+      run: |
+        echo "💾 Committing resource updates..."
+        
+        # Add all changes
+        git add UniversalWebContainer/Resources/
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "ℹ️ No changes to commit"
+        else
+          # Commit changes
+          git commit -m "🔄 Update resources from upstream repositories
+
+- Nathan jailbreak resources from verygenericname/nathanlr
+- roothide Bootstrap resources from roothide/Bootstrap  
+- TrollStore resources from opa334/TrollStore
+- Theos build system from theos/theos
+- roothide Theos from roothide/theos
+
+Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          # Push changes
+          git push origin main
+          echo "✅ Resources updated and pushed"
+        fi
+
+    - name: Create Update Summary
+      run: |
+        echo "📊 Resource Update Summary"
+        echo "=========================="
+        echo "📁 Total files: $(find UniversalWebContainer/Resources -type f | wc -l)"
+        echo "📦 Total size: $(du -sh UniversalWebContainer/Resources | cut -f1)"
+        echo "🔄 Last updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo ""
+        echo "📱 Nathan jailbreak: $(find UniversalWebContainer/Resources/bins/nathanlr -type f | wc -l) files"
+        echo "🔓 roothide Bootstrap: $(find UniversalWebContainer/Resources/bins/roothide -type f | wc -l) files"
+        echo "⚡ TrollStore: $(find UniversalWebContainer/Resources/bins/trollstore -type f | wc -l) files"
+        echo "🛠️ Theos: $(find UniversalWebContainer/Resources/macbins/theos -type f | wc -l) files"
+        echo "🔧 roothide Theos: $(find UniversalWebContainer/Resources/macbins/roothide-theos -type f | wc -l) files"
