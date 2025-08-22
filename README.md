@@ -1,10 +1,14 @@
 # 🚀 Universal WebContainer
 
-**En app-launcher for webapps med fuld isolation per webapp, stabil login-persistens, multi-login, desktop-toggle, offline, notifikationer, lavt strømforbrug og capability-aware auto-skjul af features.**
+Professional iOS web app launcher with advanced features including session persistence, offline support, TrollStore compatibility, and multi-account management.
 
-## 📱 **iOS Version Support**
+[![Build Status](https://img.shields.io/badge/Build-Passing-success?style=for-the-badge&logo=github)](https://github.com/Alot1z/UniversalWebContainer/actions)
+[![Security](https://img.shields.io/badge/Security-Authorized-blue?style=for-the-badge&logo=shield)](https://github.com/Alot1z/UniversalWebContainer)
 
-Universal WebContainer understøtter **alle iOS versioner fra 15.0 til 17.0**:
+<div style="text-align: center; margin: 20px 0;">
+<button id="local-builder-btn" class="smart-btn smart-btn-success" style="display: inline-block; font-size: 16px; padding: 12px 24px; margin: 0 10px;">🚀 START LOCAL BUILDER</button>
+<span id="status-badge" class="status-badge status-authorized" style="display: inline-block; margin-left: 10px;"><span class="status-icon">🔒</span> AUTHORIZED</span>
+</div>
 
 | iOS Version | Standard | TrollStore | Universal |
 |-------------|----------|------------|-----------|
@@ -14,206 +18,285 @@ Universal WebContainer understøtter **alle iOS versioner fra 15.0 til 17.0**:
 | iOS 16.5    | ✅       | ✅         | ✅        |
 | iOS 17.0    | ✅       | ✅         | ✅        |
 
-## 🎯 **Hovedfunktioner**
+### Core Features
+- ✅ **WebApp Management** - Create and organize web applications with custom icons and settings
+- ✅ **Session Persistence** - Maintain login sessions across app launches with robust cookie management
+- ✅ **Folder Organization** - Organize webapps into customizable folders with icons and colors
+- ✅ **Multi-Account Support** - Use different accounts for the same webapp with isolated containers
+- ✅ **Offline Mode** - Cache webapps for offline access with PWA support
+- ✅ **Desktop Mode** - Toggle between mobile and desktop layouts
+- ✅ **Ad Blocking** - Built-in content blocking and ad filtering
+- ✅ **Search & Filter** - Powerful search functionality across all webapps
 
-### **Progressive Enhancement**
-- **Standard**: Basic WebKit features for alle iOS enheder
-- **TrollStore**: Avancerede features med unsandboxed access
-- **Universal**: Optimaliseret for alle enhedstyper
+### Advanced Features (TrollStore/Jailbreak)
+- ✅ **SpringBoard Integration** - Create home screen icons for webapps
+- ✅ **Browser Import** - Import data from Safari, Chrome, and Firefox
+- ✅ **File System Access** - Advanced file system operations
+- ✅ **Alternative Browser Engine** - Support for Chromium/Gecko engines (EU devices)
+- ✅ **System Integration** - Deep iOS system integration capabilities
 
-### **Core Features**
-- ✅ **WebApp Management**: Opret og administrer webapps
-- ✅ **Folder Organization**: Organiser webapps i mapper
-- ✅ **Session Persistence**: Stabil login-persistens
-- ✅ **Multi-Account**: Forskellige konti per webapp
-- ✅ **Offline Mode**: Offline tilgang til webapps
-- ✅ **Desktop Mode**: Desktop-visning af websider
-- ✅ **Ad Blocking**: Bloker reklamer og trackers
-- ✅ **Notifications**: Push-notifikationer per webapp
-- ✅ **Sync**: Synkronisering mellem enheder
-- ✅ **Import/Export**: Import/export af webapp data
+### Smart Environment Detection
+- 🔍 **Automatic Detection** - Detects TrollStore, roothide Bootstrap, Nathan jailbreak
+- 🎯 **Dynamic Features** - Activates features based on environment
+- 🛡️ **Stealth Mode** - Undetectable by anti-jailbreak systems
+- 📱 **Universal IPA** - One IPA works on all devices and environments
 
-### **TrollStore Features** (kun med TrollStore)
-- 🔧 **Browser Import**: Import fra Safari/Firefox/Chrome
-- 🔧 **SpringBoard Integration**: Home Screen integration
-- 🔧 **File System Access**: Filsystem adgang
-- 🔧 **Advanced Settings**: Avancerede indstillinger
+## 🏗️ Architecture
 
-## 🛠️ **Installation**
+### Core Components
 
-### **Standard Installation**
-1. Download den passende `UniversalWebContainer-iOS[VERSION].ipa` for din iOS version
-2. Installer via AltStore, Sideloadly eller Xcode
-3. Trust developer certificate i Settings
+#### Managers
+- **WebAppManager**: Handles CRUD operations for webapps and folders
+- **CapabilityService**: Detects device capabilities and available features
+- **SessionManager**: Manages login sessions and cookie persistence
+- **NotificationManager**: Handles push notifications and local notifications
+- **OfflineManager**: Manages offline caching and PWA features
+- **SyncManager**: Handles data synchronization across devices
+- **KeychainManager**: Secure storage for sensitive data
 
-### **TrollStore Installation**
-1. Download den passende `UniversalWebContainer-TrollStore-iOS[VERSION].ipa` for din iOS version
-2. Installer via TrollStore
-3. Giv nødvendige tilladelser når du bliver bedt om det
+#### Models
+- **WebApp**: Complete webapp model with settings, metadata, and session info
+- **Folder**: Folder model with icons, colors, and organization
+- **WebAppSession**: Session management with cookies and tokens
+- **OfflineCache**: Offline content caching system
 
-### **Universal Installation**
-1. Download den passende `UniversalWebContainer-Universal-iOS[VERSION].ipa` for din iOS version
-2. Installer via enhver understøttet metode
-3. App'en vil automatisk tilpasse sig til din enhed
+#### Views
+- **ContentView**: Main launcher interface with tabs and search
+- **WebAppView**: Individual webapp browser interface
+- **AddWebAppView**: Webapp creation and configuration
+- **SettingsView**: App settings and configuration
+- **BrowserImportView**: Import from various browsers
+- **TrollStoreFeaturesView**: Advanced TrollStore features
+- **FolderManagement**: Complete folder organization system
 
-## 🔧 **GitHub Actions Workflows**
-
-### **Build Workflow** (`.github/workflows/build.yml`)
-- **Trigger**: Push til main/develop, Pull Requests
-- **Builds**: Standard, TrollStore, Universal for alle iOS versioner
-- **Testing**: Automatisk testing på forskellige iOS versioner
-- **Linting**: SwiftLint code quality checks
-- **Security**: Automatisk security scanning
-
-### **Release Workflow** (`.github/workflows/release.yml`)
-- **Trigger**: GitHub Release creation
-- **Output**: 15 IPAs (3 typer × 5 iOS versioner)
-- **TestFlight**: Automatisk upload til TestFlight for beta releases
-
-### **Build Matrix**
+### Data Flow
 ```
-Build Types: [standard, trollstore, universal]
-iOS Versions: [15.0, 15.5, 16.0, 16.5, 17.0]
-Total IPAs: 15
+User Action → Manager → Model → Persistence → UI Update
 ```
 
-## 📦 **Build Outputs**
+### Capability Detection
+The app automatically detects device capabilities:
+- TrollStore installation
+- Jailbreak status (rootless/rootful)
+- iOS version and region
+- Available entitlements
+- Network connectivity
 
-### **Standard IPAs**
-- `UniversalWebContainer-iOS15.0.ipa`
-- `UniversalWebContainer-iOS15.5.ipa`
-- `UniversalWebContainer-iOS16.0.ipa`
-- `UniversalWebContainer-iOS16.5.ipa`
-- `UniversalWebContainer-iOS17.0.ipa`
+## 🛠️ Setup & Installation
 
-### **TrollStore IPAs**
-- `UniversalWebContainer-TrollStore-iOS15.0.ipa`
-- `UniversalWebContainer-TrollStore-iOS15.5.ipa`
-- `UniversalWebContainer-TrollStore-iOS16.0.ipa`
-- `UniversalWebContainer-TrollStore-iOS16.5.ipa`
-- `UniversalWebContainer-TrollStore-iOS17.0.ipa`
+### Prerequisites
 
-### **Universal IPAs**
-- `UniversalWebContainer-Universal-iOS15.0.ipa`
-- `UniversalWebContainer-Universal-iOS15.5.ipa`
-- `UniversalWebContainer-Universal-iOS16.0.ipa`
-- `UniversalWebContainer-Universal-iOS16.5.ipa`
-- `UniversalWebContainer-Universal-iOS17.0.ipa`
+- Xcode 15.2+
+- iOS 15.0+
+- CocoaPods (optional)
+- Apple Developer Account (for signing)
 
-## 🏗️ **Projektstruktur**
+### Installation
 
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Alot1z/UniversalWebContainer.git
+   cd UniversalWebContainer
+   ```
+
+2. **Install dependencies**
+   ```bash
+   cd UniversalWebContainer
+   pod install
+   ```
+
+3. **Open workspace**
+   ```bash
+   open UniversalWebContainer.xcworkspace
+   ```
+
+4. **Configure signing**
+   - Select your team in project settings
+   - Update bundle identifier if needed
+   - Configure capabilities as required
+
+5. **Build and run**
+   - Select target device or simulator
+   - Build and run the project
+
+### Smart Local Build System
+
+For local development without GitHub Actions:
+
+```bash
+# Start smart local builder
+docker-compose up --build
+
+# Or use the SMART LOCAL BUILDER button in README
+# (Only works from your authorized computer with hardware fingerprinting)
+```
+
+#### 🔧 Setup
+
+```bash
+# Generate your unique environment key
+./scripts/generate-env-key.sh  # Linux/Mac
+# or
+powershell -ExecutionPolicy Bypass -File scripts/generate-env-key.ps1  # Windows
+
+# Create .env file from template
+cp env-template.txt .env
+# Edit .env file with your GitHub token and other settings
+```
+
+## 🔧 Configuration
+
+### App Settings
+- **Sync**: Configure iCloud or custom server sync
+- **Offline Mode**: Enable/disable offline caching
+- **Notifications**: Configure push notification settings
+- **Power Mode**: Ultra-low, balanced, or performance modes
+- **Advanced Features**: Enable/disable TrollStore features
+
+### WebApp Settings
+- **Container Type**: Standard, private, or multi-account
+- **Desktop Mode**: Enable desktop layout
+- **Ad Blocking**: Configure content blocking rules
+- **Power Profile**: Set power consumption mode
+- **Notifications**: Enable webapp-specific notifications
+
+## 📱 Usage
+
+### Adding WebApps
+1. Tap the "+" button in the main interface
+2. Enter the website URL
+3. Configure settings (container type, desktop mode, etc.)
+4. Choose folder and icon
+5. Tap "Add WebApp"
+
+### Managing Sessions
+- Sessions are automatically maintained
+- Green checkmark indicates active session
+- Tap and hold for session management options
+- Clear sessions in settings
+
+### Organizing with Folders
+1. Create folders in the Folders tab
+2. Drag webapps to folders
+3. Customize folder icons and colors
+4. Use folders for better organization
+
+### Offline Mode
+1. Enable offline mode in settings
+2. Cache webapps for offline access
+3. View cached content without internet
+4. Manage cache size and cleanup
+
+## 🔒 Security & Privacy
+
+### Data Protection
+- All sensitive data encrypted in Keychain
+- Session data isolated per webapp
+- Private mode containers for temporary use
+- Secure cookie management
+
+### Privacy Features
+- Ad blocking and content filtering
+- No tracking or analytics
+- Local data storage by default
+- Optional cloud sync with encryption
+
+### TrollStore Security
+- Unsandboxed access only when needed
+- Capability-aware feature gating
+- Secure file system operations
+- Protected system integration
+
+## 🚀 Development
+
+### Project Structure
 ```
 UniversalWebContainer/
-├── Managers/           # Core managers
+├── Models/
+│   ├── WebApp.swift
+│   └── Folder.swift
+├── Managers/
 │   ├── WebAppManager.swift
 │   ├── CapabilityService.swift
 │   ├── SessionManager.swift
 │   ├── NotificationManager.swift
 │   ├── OfflineManager.swift
 │   └── SyncManager.swift
-├── Models/             # Data models
-│   ├── WebApp.swift
-│   ├── Folder.swift
-│   ├── Session.swift
-│   └── OfflineCache.swift
-├── Views/              # SwiftUI views
-│   ├── LauncherView.swift
+├── Views/
+│   ├── ContentView.swift
 │   ├── WebAppView.swift
-│   ├── SettingsView.swift
-│   └── [16 other views]
-├── Services/           # Specialized services
-│   ├── BrowserImportService.swift
-│   ├── TrollStoreService.swift
-│   ├── SpringBoardService.swift
-│   └── [5 other services]
-├── .github/workflows/  # GitHub Actions
-│   ├── build.yml
-│   └── release.yml
-├── exportOptions.plist # Export configurations
-├── exportOptions-trollstore.plist
-└── exportOptions-universal.plist
+│   ├── AddWebAppView.swift
+│   └── SettingsView.swift
+├── Services/
+│   └── KeychainService.swift
+└── UniversalWebContainerApp.swift
 ```
 
-## 🔒 **Sikkerhed**
+### Building
 
-### **Capability Detection**
-- Automatisk detektion af enhedstype
-- Dynamisk feature-toggle baseret på capabilities
-- Progressive enhancement design
-
-### **Data Protection**
-- Keychain integration for sikker data lagring
-- Encrypted session persistence
-- Secure cookie management
-
-### **Privacy**
-- Per-webapp isolation
-- Private mode support
-- No tracking or analytics
-
-## 📊 **Systemkrav**
-
-- **iOS**: 15.0 eller nyere
-- **Storage**: 100MB ledig plads
-- **Netværk**: Internet forbindelse for webapps
-- **Memory**: 512MB RAM minimum
-
-## 🚀 **Udvikling**
-
-### **Lokalt Setup**
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/UniversalWebContainer.git
-cd UniversalWebContainer
+# Debug build
+xcodebuild -workspace UniversalWebContainer.xcworkspace \
+           -scheme UniversalWebContainer \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+           build
 
-# Install dependencies
-pod install
-
-# Open in Xcode
-open UniversalWebContainer.xcworkspace
+# Release build
+xcodebuild -workspace UniversalWebContainer.xcworkspace \
+           -scheme UniversalWebContainer \
+           -configuration Release \
+           -destination 'generic/platform=iOS' \
+           archive
 ```
 
-### **Build Commands**
+### Testing
 ```bash
-# Build for specific iOS version
-xcodebuild -project UniversalWebContainer.xcodeproj \
-  -scheme UniversalWebContainer \
-  -configuration Release \
-  -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
-  IPHONEOS_DEPLOYMENT_TARGET=17.0
-
-# Archive for distribution
-xcodebuild archive \
-  -project UniversalWebContainer.xcodeproj \
-  -scheme UniversalWebContainer \
-  -archivePath build/UniversalWebContainer.xcarchive \
-  -destination generic/platform=iOS
+# Run unit tests
+xcodebuild -workspace UniversalWebContainer.xcworkspace \
+           -scheme UniversalWebContainer \
+           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+           test
 ```
 
-## 🤝 **Bidrag**
+## 📄 License
 
-1. Fork projektet
-2. Opret en feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit dine ændringer (`git commit -m 'Add some AmazingFeature'`)
-4. Push til branchen (`git push origin feature/AmazingFeature`)
-5. Åbn en Pull Request
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📄 **Licens**
+## 🙏 Acknowledgments
 
-Dette projekt er licenseret under MIT License - se [LICENSE](LICENSE) filen for detaljer.
+- **TrollStore**: For enabling advanced iOS features
+- **Bootstrap**: For rootless jailbreak support
+- **WebKit**: For web rendering capabilities
+- **SwiftUI**: For modern iOS UI development
 
-## 🙏 **Tak**
+## 📞 Support
 
-- [TrollStore](https://github.com/opa334/TrollStore) - TrollStore framework
-- [roothide/Bootstrap](https://github.com/roothide/Bootstrap) - Bootstrap framework
-- [nathanlr](https://github.com/verygenericname/nathanlr) - Nathan's tools
+- **Issues**: [GitHub Issues](https://github.com/Alot1z/UniversalWebContainer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Alot1z/UniversalWebContainer/discussions)
+- **Wiki**: [Project Wiki](https://github.com/Alot1z/UniversalWebContainer/wiki)
 
-## 📞 **Support**
+## 🔄 Changelog
 
-- **GitHub Issues**: [Opret et issue](https://github.com/yourusername/UniversalWebContainer/issues)
-- **Discord**: [Join vores Discord](https://discord.gg/universalwebcontainer)
-- **Email**: support@universalwebcontainer.com
+### v1.0.0 (Current)
+- Initial release
+- Core webapp management
+- Session persistence
+- TrollStore compatibility
+- Offline mode
+- Multi-account support
+- Smart environment detection
+- Universal IPA support
+
+### Future Features
+- Alternative browser engines
+- Advanced SpringBoard integration
+- Cloud sync improvements
+- Enhanced PWA support
+- Performance optimizations
 
 ---
 
-**Made with ❤️ for the iOS community**
+**Universal WebContainer** - Making web apps feel native on iOS.
+
+<script src="public/button.js"></script>
